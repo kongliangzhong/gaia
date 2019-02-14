@@ -154,7 +154,7 @@ func (op *Operator) Edit(id string) {
     }
 
     tmpDir := os.TempDir()
-    tmpFileName := uuid.NewV4().String()
+    tmpFileName, err := uuid.NewV4().String()
     tmpFile, err := ioutil.TempFile(tmpDir, tmpFileName)
     if err != nil {
         op.err = err
