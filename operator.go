@@ -22,18 +22,18 @@ func newOperator(store Store) *Operator {
     return &Operator{nil, store}
 }
 
-func (op *Operator) Add(cs CodeSegment) {
+func (op *Operator) Add(lf Leaf) {
     var validateSegment = func() {
-        cs.Code = strings.TrimSpace(cs.Code)
-        if cs.Code == "" {
+        lf.Content = strings.TrimSpace(lf.Content)
+        if lf.Content == "" {
             op.err = errors.New("content can not be empty.")
         }
 
-        if cs.Category == "" && cs.Tags == "" {
+        if lf.Category == "" && lf.Tags == "" {
             op.err = errors.New("category and tags can not be both empty.")
         }
 
-        if strings.Contains(cs.Category, "|") || strings.Contains(cs.Tags, "|") {
+        if strings.Contains(lf.Category, "|") || strings.Contains(lf.Tags, "|") {
             op.err = errors.New("category and tagStr can not contains '|' charactor.")
         }
         return
@@ -47,17 +47,17 @@ func (op *Operator) Add(cs CodeSegment) {
         return
     }
 
-    op.err = op.store.Add(cs)
+    op.err = op.store.Add(lf)
     return
 }
 
-func (op *Operator) Update(cs CodeSegment) {
-    if cs.Id == "" {
+func (op *Operator) Update(lf Leaf) {
+    if lf.Id == "" {
         op.err = errors.New("id is empty")
         return
     }
 
-    op.err = op.store.Update(cs)
+    op.err = op.store.Update(lf)
 }
 
 func (op *Operator) Append(id string, extraContent string) {
@@ -70,17 +70,17 @@ func (op *Operator) Append(id string, extraContent string) {
 }
 
 func (op *Operator) Search(category string, tags string) {
-    matchedCs := op.store.Search(category, tags)
-    size := len(matchedCs)
+    matchedLf := op.store.Search(category, tags)
+    size := len(matchedLf)
     if size > 10 {
-        fmt.Println("Found", size, "matched code segments, print first 10 as below:")
+        fmt.Println("Found", size, "matched content segments, print first 10 as below:")
     } else {
-        fmt.Println("Found", size, "matched code segments, print as below:")
+        fmt.Println("Found", size, "matched content segments, print as below:")
     }
-    for i, cs := range matchedCs {
+    for i, lf := range matchedLf {
         if i < 10 {
             fmt.Println(resultDelimiter)
-            cs.PrintToScreen()
+            lf.PrintToScreen()
         } else {
             break
         }
@@ -108,27 +108,27 @@ func (op *Operator) Merge(ids ...string) {
     var cate string
     var allTags []string
     var desc string
-    var code string
+    var content string
     for i, id := range ids {
-        cs, err := op.store.GetById(id)
+        lf, err := op.store.GetById(id)
         if err != nil {
             op.err = err
             return
         }
 
         if i == 0 {
-            cate = cs.Category
+            cate = lf.Category
         }
 
-        desc = desc + "\n" + cs.Desc
-        code = code + "\n" + cs.Code
+        desc = desc + "\n" + lf.Desc
+        content = content + "\n" + lf.Content
 
-        if cs.Category != cate {
+        if lf.Category != cate {
             op.err = errors.New("categorys are not equal, can not merge.")
             return
         }
 
-        tags := strings.Split(cs.Tags, ",")
+        tags := strings.Split(lf.Tags, ",")
         for _, t := range tags {
             if !arrContains(allTags, t) {
                 allTags = append(allTags, t)
@@ -137,24 +137,25 @@ func (op *Operator) Merge(ids ...string) {
     }
 
     desc = strings.TrimSpace(desc)
-    code = strings.TrimSpace(code)
+    content = strings.TrimSpace(content)
     allTagsStr := strings.Join(allTags, ",")
-    mergedCodeSegment := CodeSegment{"", cate, allTagsStr, desc, code}
+    mergedLeaf := Leaf{Id: "", Category: cate, Tags: allTagsStr, Desc: desc, Content: content}
     for _, id := range ids {
         op.Remove(id)
     }
-    op.Add(mergedCodeSegment)
+    op.Add(mergedLeaf)
 }
 
 func (op *Operator) Edit(id string) {
-    cs, err := op.store.GetById(id)
+    lf, err := op.store.GetById(id)
     if err != nil {
         op.err = err
         return
     }
 
     tmpDir := os.TempDir()
-    tmpFileName, err := uuid.NewV4().String()
+    uuidObj, err := uuid.NewV4()
+    tmpFileName := uuidObj.String()
     tmpFile, err := ioutil.TempFile(tmpDir, tmpFileName)
     if err != nil {
         op.err = err
@@ -162,7 +163,7 @@ func (op *Operator) Edit(id string) {
     }
     defer tmpFile.Close()
 
-    cs.PrintToFile(tmpFile.Name())
+    lf.PrintToFile(tmpFile.Name())
 
     path, err := exec.LookPath("vi")
     if err != nil {
@@ -189,22 +190,22 @@ func (op *Operator) Edit(id string) {
     }
 
     //fmt.Println("tmpFile: ", tmpFile.Name())
-    err = (&cs).ReadFromFile(tmpFile.Name())
+    err = (&lf).ReadFromFile(tmpFile.Name())
     if err != nil {
         op.err = err
         return
     }
-    //cs.PrintToScreen()
+    //lf.PrintToScreen()
 
-    oldId := cs.Id
-    cs.Id = ""
+    oldId := lf.Id
+    lf.Id = ""
     op.Remove(oldId)
-    op.Add(cs)
+    op.Add(lf)
 }
 
 func (op *Operator) ListCates() {
     stats := op.store.GetStats()
-    head := []string{"INDEX   ", "CATEGORY        ", "RCS-NUM     ", "TAGS"}
+    head := []string{"INDEX   ", "CATEGORY        ", "RLF-NUM     ", "TAGS"}
     index := 0
     format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
     //fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
@@ -252,7 +253,7 @@ func (op *Operator) ListCates() {
 
 func (op *Operator) ListTags() {
     stats := op.store.GetStats()
-    head := []string{"INDEX    ", "TAG                    ", "RCS-NUM ", "CATEGORIES    "}
+    head := []string{"INDEX    ", "TAG                    ", "RLF-NUM ", "CATEGORIES    "}
     index := 0
     format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
     fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
@@ -261,4 +262,9 @@ func (op *Operator) ListTags() {
         num := stats.TagNumMap[tag]
         fmt.Printf(format, strconv.Itoa(index), tag, strconv.Itoa(num), strings.Join(cates, ","))
     }
+}
+
+func (op *Operator) Exec(file string) {
+    executor := newExecutor(file)
+    executor.Execute()
 }

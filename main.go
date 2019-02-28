@@ -7,8 +7,13 @@ import (
     "strings"
 )
 
+// TODO: read and write global vars from/into store
+// TODO: add alias globally for search purpose.
+// TODO: generate tree by name
+// TODO: search: in tree
+
 var defaultCodeBase = ".gaia/data/"
-const segFileName = "code-snippets.txt"
+const segFileName = "store.txt"
 
 var segFilePath = ""
 
@@ -39,14 +44,14 @@ func main() {
     op := newOperator(&FileStore{segFilePath})
     switch os.Args[1] {
     case "add":
-        codeSeg := parseArgs(os.Args)
-        op.Add(codeSeg)
+        leaf := parseArgs(os.Args)
+        op.Add(leaf)
     case "update":
-        codeSeg := parseArgs(os.Args)
-        op.Update(codeSeg)
+        leaf := parseArgs(os.Args)
+        op.Update(leaf)
     case "append":
-        codeSeg := parseArgs(os.Args)
-        op.Append(codeSeg.Id, codeSeg.Code)
+        leaf := parseArgs(os.Args)
+        op.Append(leaf.Id, leaf.Content)
     case "merge":
         ids := os.Args[2:]
         op.Merge(ids...)
@@ -55,8 +60,8 @@ func main() {
     case "list-t":
         op.ListTags()
     case "search":
-        codeSeg := parseArgs(os.Args)
-        op.Search(codeSeg.Category, codeSeg.Tags)
+        leaf := parseArgs(os.Args)
+        op.Search(leaf.Category, leaf.Tags)
     case "remove":
         id := os.Args[2]
         fmt.Println("Are you sure to remove code segment with id("+id+")?", "  yes|no")
@@ -73,6 +78,9 @@ func main() {
     case "edit":
         id := os.Args[2]
         op.Edit(id)
+    case "exec":
+        file := os.Args[2]
+        op.Exec(file)
     case "help":
         printUsage(os.Args)
     default:
@@ -84,7 +92,7 @@ func main() {
     }
 }
 
-func parseArgs(args []string) CodeSegment {
+func parseArgs(args []string) Leaf {
     var ind = func(s string) int {
         for i, a := range args {
             if a == s {
@@ -120,7 +128,7 @@ func parseArgs(args []string) CodeSegment {
         tagStr = strings.Join(args[argsLen:], ",")
     }
 
-    return CodeSegment{id, cate, tagStr, desc, content}
+    return Leaf{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
 }
 
 func printUsage(args []string) {
@@ -133,6 +141,7 @@ func printUsage(args []string) {
     fmt.Printf("\tlist-t : list all tags\n")
     fmt.Printf("\tmerge id1 id2 ...\n")
     fmt.Printf("\tappend -i id content\n")
-    fmt.Printf("\tedit id")
+    fmt.Printf("\tedit id\n")
+    fmt.Printf("\texec file")
     fmt.Println()
 }
