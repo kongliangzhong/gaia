@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "flag"
     "os"
     "os/user"
     "strings"
@@ -11,11 +12,58 @@ import (
 // TODO: add alias globally for search purpose.
 // TODO: generate tree by name
 // TODO: search: in tree
+// TODO: execute code from system clipboard
+// TODO: copy code to clipboard
 
-var defaultCodeBase = ".gaia/data/"
-const segFileName = "store.txt"
+// TODO: read all items by skip:count
 
-var segFilePath = ""
+var gaiaDir = ".gaia/data/"
+const dataFileName = "data.json"
+var dataFilePath = ""
+
+var subCommands = []string{
+    "add",
+    "alias",
+    "update",
+    "append",
+    "merge",
+    "list",
+    "search",
+    "remove",
+    "edit",
+    "exec",
+}
+
+var subCommandMap = map[string]string{
+    "add": "add item",
+    "alias": "add keyword alias",
+    "update": "update item",
+    "append": "append text to item content",
+    "merge": "merge two item into one",
+    "list": "list items",
+    "search": "search items",
+    "remove": "remove item by id",
+    "edit": "edit item in vi",
+    "exec": "execute item",
+}
+
+var (
+    subFlag *flag.FlagSet
+    isHelp bool
+    id string
+    oid string
+    name string
+    category string
+    tags string
+    desc string
+    content string
+    isExecutable bool
+    mainFile string
+
+    listCategories bool
+    listTags bool
+    listAlias bool
+)
 
 func init() {
     usr, err := user.Current()
@@ -23,45 +71,166 @@ func init() {
         panic(err)
     }
 
-    defaultCodeBase = usr.HomeDir + "/" + defaultCodeBase
-    segFilePath = defaultCodeBase + segFileName
-    _, err = os.Stat(defaultCodeBase)
+    gaiaDir = usr.HomeDir + "/" + gaiaDir
+    dataFilePath = gaiaDir + dataFileName
+    _, err = os.Stat(gaiaDir)
     if err != nil && os.IsNotExist(err) {
-        err = os.MkdirAll(defaultCodeBase, 0770)
+        err = os.MkdirAll(gaiaDir, 0770)
         if err != nil {
             panic(err)
         }
     }
 }
 
-// keep things simple: category should be one world only. tags can have multiple world, seperated by comma(,).
+// func setupFlags() {
+//     for _, subCommand := range subCommands {
+//         subFlag := flag.NewFlagSet(subCommand, flag.ExitOnError)
+//         subFlag.String("h", "", "show help message")
+
+//         switch (subCommand) {
+//         case "add":
+//             subFlag.String("i", "", "leaf id")
+//             subFlag.String("n", "", "leaf name")
+//             subFlag.String("c", "", "leaf category")
+//             subFlag.String("t", "", "leaf tags, tag seprated by comma")
+//             subFlag.String("m", "", "leaf description")
+//         case "update":
+//         case "append":
+//         case "merge":
+//         case "list":
+//         case "search":
+//         case "remove":
+//         case "edit":
+//         case "exec":
+
+//         default:
+//             fmt.Println("Unrecgonized command:", subCommand)
+//         }
+
+//     }
+
+//     flag.String("h", "", "show usage")
+//     flag.Usage = printUsage
+// }
+
 func main() {
-    if len(os.Args) <= 1 {
-        printUsage(os.Args)
+    flag.BoolVar(&isHelp, "h", false, "show help message")
+    if len(os.Args) == 1 {
+        printUsage()
         os.Exit(-1)
     }
 
-    op := newOperator(&FileStore{segFilePath})
+    // fmt.Println("os.Args[1]:", os.Args[1])
+    // flag.Parse()
+    flag.Usage = printUsage
+
+    if os.Args[1] == "-h" || os.Args[1] == "--help" {
+        printUsage()
+        os.Exit(2)
+    }
+
+    subFlag = flag.NewFlagSet(os.Args[1], flag.ExitOnError)
+    subFlag.Usage = func() {
+        fmt.Printf("Usage: %s %s <args> \n", os.Args[0], os.Args[1])
+        subFlag.PrintDefaults()
+    }
     switch os.Args[1] {
     case "add":
-        leaf := parseArgs(os.Args)
-        op.Add(leaf)
+        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&name, "n", "", "leaf name")
+        subFlag.StringVar(&category, "c", "", "leaf category")
+        subFlag.StringVar(&tags, "t", "", "leaf tags, tag seprated by comma")
+        subFlag.StringVar(&desc, "m", "", "leaf description")
+        subFlag.StringVar(&content, "b", "", "leaf body content")
+        subFlag.BoolVar(&isExecutable, "e", false, "is leaf executable")
+        subFlag.StringVar(&mainFile, "f", "", "executable main file name")
+    case "alias":
+        subFlag.Usage = func() {
+            fmt.Printf("Usage: %s %s <keyword> <target-keyword> \n", os.Args[0], os.Args[1])
+            subFlag.PrintDefaults()
+        }
     case "update":
-        leaf := parseArgs(os.Args)
-        op.Update(leaf)
+        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&content, "b", "", "leaf body content")
     case "append":
-        leaf := parseArgs(os.Args)
-        op.Append(leaf.Id, leaf.Content)
+        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&content, "b", "", "leaf append content")
     case "merge":
-        ids := os.Args[2:]
-        op.Merge(ids...)
+        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&oid, "d", "", "dest leaf id")
+    case "list":
+        subFlag.BoolVar(&listCategories, "c", false, "list leaf categories")
+        subFlag.BoolVar(&listTags, "t", false, "list leaf tags")
+        subFlag.BoolVar(&listAlias, "a", false, "list global keyword alias")
+    case "search":
+        subFlag.StringVar(&category, "c", "", "list leaf categories")
+    case "remove":
+        subFlag.StringVar(&id, "i", "", "leaf id")
+    case "edit":
+        subFlag.StringVar(&id, "i", "", "leaf id")
+    case "exec":
+        subFlag.StringVar(&id, "i", "", "leaf id")
+    default:
+        fmt.Println("Unrecogniz command:", os.Args[1])
+        printUsage()
+        os.Exit(2)
+    }
+
+    subFlag.BoolVar(&isHelp, "h", false, "show help message")
+
+    if len(os.Args) == 2 ||
+        os.Args[2] == "-h" ||
+        os.Args[2] == "--help" {
+        subFlag.Usage()
+        os.Exit(2)
+    }
+
+    subFlag.Parse(os.Args[2:])
+    processSubCommand(os.Args[1])
+}
+
+func processSubCommand(command string) {
+    op := newOperator(&JsonFileStore{dataFilePath, &GaiaData{}})
+
+    switch command {
+    case "add":
+        checkRequiredArg("-n", name)
+        checkRequiredArg("-c", category)
+        checkRequiredArg("-b", content)
+        leaf := Leaf{
+            Name: name,
+            Category: category,
+            Tags: tags,
+            Desc: desc,
+            Content: content,
+            IsExecutable: isExecutable,
+            MainFileName: mainFile,
+        }
+        op.Add(leaf)
+    case "alias":
+        aliasArgs := subFlag.Args()
+        if len(aliasArgs) != 2 {
+            subFlag.Usage()
+            os.Exit(2)
+        }
+        op.AddAlias(aliasArgs[0], aliasArgs[1])
+
+    case "update":
+        // leaf := parseArgs(os.Args)
+        // op.Update(leaf)
+    case "append":
+        // leaf := parseArgs(os.Args)
+        // op.Append(leaf.Id, leaf.Content)
+    case "merge":
+        // ids := os.Args[2:]
+        // op.Merge(ids...)
     case "list-c":
         op.ListCates()
     case "list-t":
         op.ListTags()
     case "search":
-        leaf := parseArgs(os.Args)
-        op.Search(leaf.Category, leaf.Tags)
+        // leaf := parseArgs(os.Args)
+        // op.Search(leaf.Category, leaf.Tags)
     case "remove":
         id := os.Args[2]
         fmt.Println("Are you sure to remove code segment with id("+id+")?", "  yes|no")
@@ -81,10 +250,9 @@ func main() {
     case "exec":
         file := os.Args[2]
         op.Exec(file)
-    case "help":
-        printUsage(os.Args)
     default:
-        printUsage(os.Args)
+        fmt.Println("Error: wrong path")
+        os.Exit(2)
     }
 
     if op.err != nil {
@@ -92,56 +260,60 @@ func main() {
     }
 }
 
-func parseArgs(args []string) Leaf {
-    var ind = func(s string) int {
-        for i, a := range args {
-            if a == s {
-                return i
-            }
-        }
-        return -1
+func checkRequiredArg(argName, argValue string) {
+    if strings.TrimSpace(argValue) == "" {
+        fmt.Println("Missing required arg:", argName)
+        os.Exit(3)
     }
-
-    var argsLen = 2
-    var getParam = func(flag string) string {
-        if ind_flag := ind(flag); ind_flag > 0 {
-            //fmt.Printf("flag:%s, index:%d ", flag, ind_flag)
-            if len(args) <= ind_flag+1 {
-                fmt.Println("missing parameter value for ", flag)
-            }
-            argsLen += 2
-            return args[ind_flag+1]
-        }
-        return ""
-    }
-
-    id := getParam("-i")
-    cate := getParam("-c")
-    tagStr := getParam("-t")
-    desc := getParam("-m")
-    var content string
-    if len(args) > argsLen {
-        content = strings.Join(args[argsLen:], " ")
-    }
-
-    if args[1] == "search" {
-        tagStr = strings.Join(args[argsLen:], ",")
-    }
-
-    return Leaf{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
 }
 
-func printUsage(args []string) {
-    fmt.Printf("Usage:\n    %s add|update|search|remove|list-c|list-t|merge|append|edit|help\n", args[0])
-    fmt.Printf("\tadd -t tag1,tag2 -c category -m description content\n")
-    fmt.Printf("\tsearch [-c category] tag1 tag2\n")
-    fmt.Printf("\tremove id\n")
-    fmt.Printf("\tupdate -i id [-t tag1,tag2 [-c category] [-m desc]] content\n")
-    fmt.Printf("\tlist-c : list all categories\n")
-    fmt.Printf("\tlist-t : list all tags\n")
-    fmt.Printf("\tmerge id1 id2 ...\n")
-    fmt.Printf("\tappend -i id content\n")
-    fmt.Printf("\tedit id\n")
-    fmt.Printf("\texec file")
-    fmt.Println()
+// func parseArgs(args []string) Leaf {
+//     var ind = func(s string) int {
+//         for i, a := range args {
+//             if a == s {
+//                 return i
+//             }
+//         }
+//         return -1
+//     }
+
+//     var argsLen = 2
+//     var getParam = func(flag string) string {
+//         if ind_flag := ind(flag); ind_flag > 0 {
+//             //fmt.Printf("flag:%s, index:%d ", flag, ind_flag)
+//             if len(args) <= ind_flag+1 {
+//                 fmt.Println("missing parameter value for ", flag)
+//             }
+//             argsLen += 2
+//             return args[ind_flag+1]
+//         }
+//         return ""
+//     }
+
+//     id := getParam("-i")
+//     cate := getParam("-c")
+//     tagStr := getParam("-t")
+//     desc := getParam("-m")
+//     var content string
+//     if len(args) > argsLen {
+//         content = strings.Join(args[argsLen:], " ")
+//     }
+
+//     if args[1] == "search" {
+//         tagStr = strings.Join(args[argsLen:], ",")
+//     }
+
+//     return Leaf{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
+// }
+
+func printUsage() {
+    fmt.Printf("Usage: %s <command> <args...> \n", os.Args[0])
+    fmt.Println("acceptable commands are:")
+    for _, command := range subCommands {
+        fmt.Printf("  %-8s  %s\n", command, subCommandMap[command])
+    }
+
+    fmt.Println("")
+    fmt.Println("optional args:")
+    flag.PrintDefaults()
 }

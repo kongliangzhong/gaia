@@ -23,7 +23,7 @@ func newOperator(store Store) *Operator {
 }
 
 func (op *Operator) Add(lf Leaf) {
-    var validateSegment = func() {
+    var validate = func() {
         lf.Content = strings.TrimSpace(lf.Content)
         if lf.Content == "" {
             op.err = errors.New("content can not be empty.")
@@ -42,13 +42,17 @@ func (op *Operator) Add(lf Leaf) {
     if op.err != nil {
         return
     }
-    validateSegment()
+
+    validate()
     if op.err != nil {
         return
     }
 
     op.err = op.store.Add(lf)
-    return
+}
+
+func (op *Operator) AddAlias(from, to string) {
+    op.err = op.store.AddAlias(from, to)
 }
 
 func (op *Operator) Update(lf Leaf) {
