@@ -9,6 +9,7 @@ type Store interface {
     Remove(id string) error
     GetById(id string) (Leaf, error)
     GetStats() Stats
+    GetAlias() map[string]string
 }
 
 type Stats struct {

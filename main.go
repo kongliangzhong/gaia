@@ -63,6 +63,7 @@ var (
     listCategories bool
     listTags bool
     listAlias bool
+    listNames bool
 )
 
 func init() {
@@ -144,6 +145,11 @@ func main() {
         subFlag.StringVar(&content, "b", "", "leaf body content")
         subFlag.BoolVar(&isExecutable, "e", false, "is leaf executable")
         subFlag.StringVar(&mainFile, "f", "", "executable main file name")
+
+        subFlag.Usage = func() {
+            fmt.Printf("Usage: %s %s -n name -c category -b body [<other args>] \n", os.Args[0], os.Args[1])
+            subFlag.PrintDefaults()
+        }
     case "alias":
         subFlag.Usage = func() {
             fmt.Printf("Usage: %s %s <keyword> <target-keyword> \n", os.Args[0], os.Args[1])
@@ -161,6 +167,7 @@ func main() {
     case "list":
         subFlag.BoolVar(&listCategories, "c", false, "list leaf categories")
         subFlag.BoolVar(&listTags, "t", false, "list leaf tags")
+        subFlag.BoolVar(&listNames, "n", false, "list by name parts")
         subFlag.BoolVar(&listAlias, "a", false, "list global keyword alias")
     case "search":
         subFlag.StringVar(&category, "c", "", "list leaf categories")
@@ -190,7 +197,7 @@ func main() {
 }
 
 func processSubCommand(command string) {
-    op := newOperator(&JsonFileStore{dataFilePath, &GaiaData{}})
+    op := newOperator(newJsonFileStore(dataFilePath))
 
     switch command {
     case "add":
@@ -224,10 +231,21 @@ func processSubCommand(command string) {
     case "merge":
         // ids := os.Args[2:]
         // op.Merge(ids...)
-    case "list-c":
-        op.ListCates()
-    case "list-t":
-        op.ListTags()
+    case "list":
+        if listAlias {
+            op.ListAlias()
+        } else if listCategories {
+
+        } else if listTags {
+
+        } else if listNames {
+
+        } else {
+
+        }
+        //op.ListCates()
+    // case "list-t":
+    //     op.ListTags()
     case "search":
         // leaf := parseArgs(os.Args)
         // op.Search(leaf.Category, leaf.Tags)
@@ -262,8 +280,8 @@ func processSubCommand(command string) {
 
 func checkRequiredArg(argName, argValue string) {
     if strings.TrimSpace(argValue) == "" {
-        fmt.Println("Missing required arg:", argName)
-        os.Exit(3)
+        fmt.Println("Missing required arg: ", argName)
+        os.Exit(2)
     }
 }
 

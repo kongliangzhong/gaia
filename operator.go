@@ -23,27 +23,27 @@ func newOperator(store Store) *Operator {
 }
 
 func (op *Operator) Add(lf Leaf) {
-    var validate = func() {
-        lf.Content = strings.TrimSpace(lf.Content)
-        if lf.Content == "" {
-            op.err = errors.New("content can not be empty.")
-        }
+    // var validate = func() {
+    //     lf.Content = strings.TrimSpace(lf.Content)
+    //     if lf.Content == "" {
+    //         op.err = errors.New("content can not be empty.")
+    //     }
 
-        if lf.Category == "" && lf.Tags == "" {
-            op.err = errors.New("category and tags can not be both empty.")
-        }
+    //     if lf.Category == "" && lf.Tags == "" {
+    //         op.err = errors.New("category and tags can not be both empty.")
+    //     }
 
-        if strings.Contains(lf.Category, "|") || strings.Contains(lf.Tags, "|") {
-            op.err = errors.New("category and tagStr can not contains '|' charactor.")
-        }
-        return
-    }
+    //     if strings.Contains(lf.Category, "|") || strings.Contains(lf.Tags, "|") {
+    //         op.err = errors.New("category and tagStr can not contains '|' charactor.")
+    //     }
+    //     return
+    // }
 
-    if op.err != nil {
-        return
-    }
+    // if op.err != nil {
+    //     return
+    // }
 
-    validate()
+    // validate()
     if op.err != nil {
         return
     }
@@ -205,6 +205,19 @@ func (op *Operator) Edit(id string) {
     lf.Id = ""
     op.Remove(oldId)
     op.Add(lf)
+}
+
+func (op *Operator) ListAlias() {
+    aliasMap := op.store.GetAlias()
+
+    if len(aliasMap) == 0 {
+        fmt.Println("No Alias Mapping")
+        return
+    } else {
+        for k, v := range aliasMap {
+            fmt.Printf("%s -> %s\n", k, v)
+        }
+    }
 }
 
 func (op *Operator) ListCates() {
