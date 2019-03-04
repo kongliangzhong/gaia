@@ -22,18 +22,18 @@ func newOperator(store Store) *Operator {
     return &Operator{nil, store}
 }
 
-func (op *Operator) Add(lf Leaf) {
+func (op *Operator) Add(node Node) {
     // var validate = func() {
-    //     lf.Content = strings.TrimSpace(lf.Content)
-    //     if lf.Content == "" {
+    //     node.Content = strings.TrimSpace(node.Content)
+    //     if node.Content == "" {
     //         op.err = errors.New("content can not be empty.")
     //     }
 
-    //     if lf.Category == "" && lf.Tags == "" {
+    //     if node.Category == "" && node.Tags == "" {
     //         op.err = errors.New("category and tags can not be both empty.")
     //     }
 
-    //     if strings.Contains(lf.Category, "|") || strings.Contains(lf.Tags, "|") {
+    //     if strings.Contains(node.Category, "|") || strings.Contains(node.Tags, "|") {
     //         op.err = errors.New("category and tagStr can not contains '|' charactor.")
     //     }
     //     return
@@ -48,20 +48,20 @@ func (op *Operator) Add(lf Leaf) {
         return
     }
 
-    op.err = op.store.Add(lf)
+    op.err = op.store.Add(node)
 }
 
 func (op *Operator) AddAlias(from, to string) {
     op.err = op.store.AddAlias(from, to)
 }
 
-func (op *Operator) Update(lf Leaf) {
-    if lf.Id == "" {
+func (op *Operator) Update(node Node) {
+    if node.Id == "" {
         op.err = errors.New("id is empty")
         return
     }
 
-    op.err = op.store.Update(lf)
+    op.err = op.store.Update(node)
 }
 
 func (op *Operator) Append(id string, extraContent string) {
@@ -74,17 +74,17 @@ func (op *Operator) Append(id string, extraContent string) {
 }
 
 func (op *Operator) Search(category string, tags string) {
-    matchedLf := op.store.Search(category, tags)
-    size := len(matchedLf)
+    matchedNode := op.store.Search(category, tags)
+    size := len(matchedNode)
     if size > 10 {
         fmt.Println("Found", size, "matched content segments, print first 10 as below:")
     } else {
         fmt.Println("Found", size, "matched content segments, print as below:")
     }
-    for i, lf := range matchedLf {
+    for i, node := range matchedNode {
         if i < 10 {
             fmt.Println(resultDelimiter)
-            lf.PrintToScreen()
+            node.PrintToScreen()
         } else {
             break
         }
@@ -114,25 +114,25 @@ func (op *Operator) Merge(ids ...string) {
     var desc string
     var content string
     for i, id := range ids {
-        lf, err := op.store.GetById(id)
+        node, err := op.store.GetById(id)
         if err != nil {
             op.err = err
             return
         }
 
         if i == 0 {
-            cate = lf.Category
+            cate = node.Category
         }
 
-        desc = desc + "\n" + lf.Desc
-        content = content + "\n" + lf.Content
+        desc = desc + "\n" + node.Desc
+        content = content + "\n" + node.Content
 
-        if lf.Category != cate {
+        if node.Category != cate {
             op.err = errors.New("categorys are not equal, can not merge.")
             return
         }
 
-        tags := strings.Split(lf.Tags, ",")
+        tags := strings.Split(node.Tags, ",")
         for _, t := range tags {
             if !arrContains(allTags, t) {
                 allTags = append(allTags, t)
@@ -143,15 +143,15 @@ func (op *Operator) Merge(ids ...string) {
     desc = strings.TrimSpace(desc)
     content = strings.TrimSpace(content)
     allTagsStr := strings.Join(allTags, ",")
-    mergedLeaf := Leaf{Id: "", Category: cate, Tags: allTagsStr, Desc: desc, Content: content}
+    mergedNode := Node{Id: "", Category: cate, Tags: allTagsStr, Desc: desc, Content: content}
     for _, id := range ids {
         op.Remove(id)
     }
-    op.Add(mergedLeaf)
+    op.Add(mergedNode)
 }
 
 func (op *Operator) Edit(id string) {
-    lf, err := op.store.GetById(id)
+    node, err := op.store.GetById(id)
     if err != nil {
         op.err = err
         return
@@ -167,7 +167,7 @@ func (op *Operator) Edit(id string) {
     }
     defer tmpFile.Close()
 
-    lf.PrintToFile(tmpFile.Name())
+    node.PrintToFile(tmpFile.Name())
 
     path, err := exec.LookPath("vi")
     if err != nil {
@@ -194,17 +194,17 @@ func (op *Operator) Edit(id string) {
     }
 
     //fmt.Println("tmpFile: ", tmpFile.Name())
-    err = (&lf).ReadFromFile(tmpFile.Name())
+    err = (&node).ReadFromFile(tmpFile.Name())
     if err != nil {
         op.err = err
         return
     }
-    //lf.PrintToScreen()
+    //node.PrintToScreen()
 
-    oldId := lf.Id
-    lf.Id = ""
+    oldId := node.Id
+    node.Id = ""
     op.Remove(oldId)
-    op.Add(lf)
+    op.Add(node)
 }
 
 func (op *Operator) ListAlias() {
@@ -222,7 +222,7 @@ func (op *Operator) ListAlias() {
 
 func (op *Operator) ListCates() {
     stats := op.store.GetStats()
-    head := []string{"INDEX   ", "CATEGORY        ", "RLF-NUM     ", "TAGS"}
+    head := []string{"INDEX   ", "CATEGORY        ", "NODE-NUM     ", "TAGS"}
     index := 0
     format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
     //fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
@@ -270,7 +270,7 @@ func (op *Operator) ListCates() {
 
 func (op *Operator) ListTags() {
     stats := op.store.GetStats()
-    head := []string{"INDEX    ", "TAG                    ", "RLF-NUM ", "CATEGORIES    "}
+    head := []string{"INDEX    ", "TAG                    ", "NODE-NUM ", "CATEGORIES    "}
     index := 0
     format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
     fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])

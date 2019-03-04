@@ -22,6 +22,7 @@ const (
     JAVA
     SCALA
     GO
+    SHELL
 )
 
 type Executor struct {

@@ -14,13 +14,13 @@ type FileStore struct {
     FilePath string
 }
 
-func (fs *FileStore) leafToStr(lf Leaf) string {
-    descB64 := base64.StdEncoding.EncodeToString([]byte(lf.Desc))
-    contentB64 := base64.StdEncoding.EncodeToString([]byte(lf.Content))
-    return lf.Id + "|" + lf.Category + "|" + lf.Tags + "|" + descB64 + "|" + contentB64
+func (fs *FileStore) nodeToStr(node Node) string {
+    descB64 := base64.StdEncoding.EncodeToString([]byte(node.Desc))
+    contentB64 := base64.StdEncoding.EncodeToString([]byte(node.Content))
+    return node.Id + "|" + node.Category + "|" + node.Tags + "|" + descB64 + "|" + contentB64
 }
 
-func (fs *FileStore) strToLeaf(str string) (lf Leaf, err error) {
+func (fs *FileStore) strToNode(str string) (node Node, err error) {
     flds := strings.Split(str, "|")
     if len(flds) != 5 {
         err = errors.New("parse segemnt str failed: " + str)
@@ -45,37 +45,37 @@ func (fs *FileStore) strToLeaf(str string) (lf Leaf, err error) {
     desc = string(descBs)
     code = string(codeBs)
 
-    lf = Leaf{Id: id, Category: cate, Tags: tags, Desc: desc, Content: code}
+    node = Node{Id: id, Category: cate, Tags: tags, Desc: desc, Content: code}
     return
 }
 
-func (fs *FileStore) genId(lf Leaf) (id string, err error) {
-    if lf.Id != "" {
+func (fs *FileStore) genId(node Node) (id string, err error) {
+    if node.Id != "" {
         err = errors.New("id already exists")
         return
     }
 
-    if lf.Category == "" && lf.Tags == "" {
+    if node.Category == "" && node.Tags == "" {
         err = errors.New("generate id failed: category and tags both empty")
     }
 
-    idBytes := sha1.Sum([]byte(lf.Category + lf.Tags))
+    idBytes := sha1.Sum([]byte(node.Category + node.Tags))
     id = base64.StdEncoding.EncodeToString(idBytes[:])
     id = id[:len(id)-1] //
     return
 }
 
-func (fs *FileStore) Add(lf Leaf) error {
-    if lf.Id == "" {
-        id, err := fs.genId(lf)
+func (fs *FileStore) Add(node Node) error {
+    if node.Id == "" {
+        id, err := fs.genId(node)
         if err != nil {
             return err
         }
         //fmt.Println("id: ", id, "id len:", len(id))
-        lf.Id = id
+        node.Id = id
     }
 
-    if err := fs.isDuplicate(lf); err != nil {
+    if err := fs.isDuplicate(node); err != nil {
         return err
     }
 
@@ -85,12 +85,12 @@ func (fs *FileStore) Add(lf Leaf) error {
     }
     defer f.Close()
 
-    line := fs.leafToStr(lf)
+    line := fs.nodeToStr(node)
     _, err = f.WriteString(line + "\n")
     return err
 }
 
-func (fs *FileStore) GetById(id string) (lf Leaf, err error) {
+func (fs *FileStore) GetById(id string) (node Node, err error) {
     if len(id) < IdLen {
         err = errors.New("invalid id:" + id)
         return
@@ -106,7 +106,7 @@ func (fs *FileStore) GetById(id string) (lf Leaf, err error) {
     for scanner.Scan() {
         line := scanner.Text()
         if strings.HasPrefix(line, id) {
-            return fs.strToLeaf(line)
+            return fs.strToNode(line)
         }
     }
 
@@ -114,55 +114,55 @@ func (fs *FileStore) GetById(id string) (lf Leaf, err error) {
     return
 }
 
-func (fs *FileStore) Update(lf Leaf) error {
-    newLf, err := fs.GetById(lf.Id)
+func (fs *FileStore) Update(node Node) error {
+    newNode, err := fs.GetById(node.Id)
     if err != nil {
         return err
     }
 
-    if lf.Category != "" {
-        newLf.Category = lf.Category
+    if node.Category != "" {
+        newNode.Category = node.Category
     }
 
-    if lf.Tags != "" {
-        newLf.Tags = lf.Tags
+    if node.Tags != "" {
+        newNode.Tags = node.Tags
     }
 
-    if lf.Desc != "" {
-        newLf.Desc = lf.Desc
+    if node.Desc != "" {
+        newNode.Desc = node.Desc
     }
 
-    if lf.Content != "" {
-        newLf.Content = lf.Content
+    if node.Content != "" {
+        newNode.Content = node.Content
     }
 
-    fs.Remove(lf.Id)
-    return fs.Add(newLf)
+    fs.Remove(node.Id)
+    return fs.Add(newNode)
 }
 
 func (fs *FileStore) Append(id string, extraContent string) error {
-    newLf, err := fs.GetById(id)
+    newNode, err := fs.GetById(id)
     if err != nil {
         return err
     }
 
-    newLf.Content = strings.Trim(newLf.Content, "\n") + "\n" + strings.Trim(extraContent, "\n")
+    newNode.Content = strings.Trim(newNode.Content, "\n") + "\n" + strings.Trim(extraContent, "\n")
     fs.Remove(id)
-    return fs.Add(newLf)
+    return fs.Add(newNode)
 }
 
-func (fs *FileStore) Search(category string, tagStr string) []Leaf {
+func (fs *FileStore) Search(category string, tagStr string) []Node {
     //tags := strings.Split(tagStr, ",")
     matchedLines := grepFile(fs.FilePath, category, tagStr)
-    matchedLf := []Leaf{}
+    matchedNode := []Node{}
     for _, line := range matchedLines {
-        lf, err := fs.strToLeaf(line)
+        node, err := fs.strToNode(line)
         if err != nil {
             fmt.Println(err.Error())
         }
-        matchedLf = append(matchedLf, lf)
+        matchedNode = append(matchedNode, node)
     }
-    return matchedLf
+    return matchedNode
 }
 
 func grepFile(file string, reqCate string, reqTagStr string) []string {
@@ -191,12 +191,12 @@ func grepFile(file string, reqCate string, reqTagStr string) []string {
         tagsInStore = strings.ToUpper(tagsInStore)
         reqTagStr = strings.ToUpper(reqTagStr)
 
-        allTagsOfLf := strings.Split(tagsInStore, ",")
-        for _, t := range allTagsOfLf {
+        allTagsOfNode := strings.Split(tagsInStore, ",")
+        for _, t := range allTagsOfNode {
             subTs := strings.Split(t, "-")
             if len(subTs) > 1 {
                 for _, subTag := range subTs {
-                    allTagsOfLf = append(allTagsOfLf, subTag)
+                    allTagsOfNode = append(allTagsOfNode, subTag)
                 }
             }
         }
@@ -205,8 +205,8 @@ func grepFile(file string, reqCate string, reqTagStr string) []string {
 
         for _, reqTag := range reqTags {
             isContains := false
-            for _, tagOfLf := range allTagsOfLf {
-                if tagOfLf == reqTag {
+            for _, tagOfNode := range allTagsOfNode {
+                if tagOfNode == reqTag {
                     isContains = true
                 }
             }
@@ -283,7 +283,7 @@ func (fs *FileStore) Remove(id string) error {
     return nil
 }
 
-func (fs *FileStore) isDuplicate(lf Leaf) error {
+func (fs *FileStore) isDuplicate(node Node) error {
     f, err := os.Open(fs.FilePath)
     if err != nil {
         return nil
@@ -293,12 +293,12 @@ func (fs *FileStore) isDuplicate(lf Leaf) error {
     scanner := bufio.NewScanner(f)
     for scanner.Scan() {
         line := scanner.Text()
-        lfInFile, _ := fs.strToLeaf(line)
-        if lfInFile.Content == lf.Content {
-            return errors.New("duplicated code content with id:" + lfInFile.Id)
+        nodeInFile, _ := fs.strToNode(line)
+        if nodeInFile.Content == node.Content {
+            return errors.New("duplicated code content with id:" + nodeInFile.Id)
         }
-        if lfInFile.Id == lf.Id {
-            return errors.New("duplicated id generated. category and tags is the same with code segment " + lfInFile.Id)
+        if nodeInFile.Id == node.Id {
+            return errors.New("duplicated id generated. category and tags is the same with code segment " + nodeInFile.Id)
         }
     }
     return nil
@@ -323,14 +323,14 @@ func (fs *FileStore) GetStats() Stats {
     scanner := bufio.NewScanner(f)
     for scanner.Scan() {
         line := scanner.Text()
-        rlf, err := fs.strToLeaf(line)
+        rnode, err := fs.strToNode(line)
         if err != nil {
             fmt.Println(err)
             continue
         }
         stats.TotalSize ++
-        cate := rlf.Category
-        tagStr := rlf.Tags
+        cate := rnode.Category
+        tagStr := rnode.Tags
         tagsArr := strings.Split(tagStr, ",")
 
         cateSize := stats.CateNumMap[cate]

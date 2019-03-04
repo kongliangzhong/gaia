@@ -13,7 +13,7 @@ type GaiaData struct {
     AliasMap map[string]string
     IdPrefixMap map[string]string
     NameIdMap map[string]string
-    LeavesMap map[string]Leaf
+    LeavesMap map[string]Node
 }
 
 type JsonFileStore struct {
@@ -28,9 +28,9 @@ func newJsonFileStore(dataFilePath string) *JsonFileStore {
     return jsonStore
 }
 
-func (jsonStore *JsonFileStore) Add(lf Leaf) error {
+func (jsonStore *JsonFileStore) Add(node Node) error {
     generateId := func() (string, error) {
-        parts := strings.Split(lf.Name, "-")
+        parts := strings.Split(node.Name, "-")
         id := ""
         if idPrefix, ok := jsonStore.gaiaData.IdPrefixMap[parts[0]]; ok {
             id = idPrefix
@@ -41,7 +41,7 @@ func (jsonStore *JsonFileStore) Add(lf Leaf) error {
             }
 
             if len(prefixUsageMap) == 256 {
-                return "", errors.New("leaf name head is greater than 255")
+                return "", errors.New("node name head is greater than 255")
             }
 
             for i := 0; i < 256; i++ {
@@ -70,8 +70,8 @@ func (jsonStore *JsonFileStore) Add(lf Leaf) error {
         return id, nil
     }
 
-    if jsonStore.gaiaData.NameIdMap[lf.Name] != "" {
-        return errors.New("leaf name exist:" + lf.Name)
+    if jsonStore.gaiaData.NameIdMap[node.Name] != "" {
+        return errors.New("node name exist:" + node.Name)
     }
 
     id, err := generateId()
@@ -79,9 +79,9 @@ func (jsonStore *JsonFileStore) Add(lf Leaf) error {
         return err
     }
 
-    lf.Id = id
-    jsonStore.gaiaData.NameIdMap[lf.Name] = id
-    jsonStore.gaiaData.LeavesMap[id] = lf
+    node.Id = id
+    jsonStore.gaiaData.NameIdMap[node.Name] = id
+    jsonStore.gaiaData.LeavesMap[id] = node
 
     return jsonStore.saveToFile()
 }
@@ -96,7 +96,7 @@ func (jsonStore *JsonFileStore) AddAlias(from, to string) error {
     return jsonStore.saveToFile()
 }
 
-func (jsonStore *JsonFileStore) Update(lf Leaf) error {
+func (jsonStore *JsonFileStore) Update(node Node) error {
     return errors.New("unimplemented")
 }
 
@@ -104,16 +104,16 @@ func (jsonStore *JsonFileStore) Append(id string, extraContent string) error {
     return errors.New("unimplemented")
 }
 
-func (jsonStore *JsonFileStore) Search(category string, tagStr string) []Leaf {
-    return []Leaf{}
+func (jsonStore *JsonFileStore) Search(category string, tagStr string) []Node {
+    return []Node{}
 }
 
 func (jsonStore *JsonFileStore) Remove(id string) error {
     return errors.New("unimplemented")
 }
 
-func (jsonStore *JsonFileStore) GetById(id string) (Leaf, error) {
-    return Leaf{}, errors.New("unimplemented")
+func (jsonStore *JsonFileStore) GetById(id string) (Node, error) {
+    return Node{}, errors.New("unimplemented")
 }
 
 func (jsonStore *JsonFileStore) GetStats() Stats {
@@ -156,7 +156,7 @@ func (jsonStore *JsonFileStore) load() error {
     }
 
     if jsonStore.gaiaData.LeavesMap == nil {
-        jsonStore.gaiaData.LeavesMap = make(map[string]Leaf)
+        jsonStore.gaiaData.LeavesMap = make(map[string]Node)
     }
 
     return err

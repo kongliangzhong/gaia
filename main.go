@@ -17,9 +17,10 @@ import (
 
 // TODO: read all items by skip:count
 
-var gaiaDir = ".gaia/data/"
-const dataFileName = "data.json"
+var gaiaDir = ".gaia/"
+const dataFileName = "data/data.json"
 var dataFilePath = ""
+var codeBase = "codebase/"
 
 var subCommands = []string{
     "add",
@@ -59,6 +60,7 @@ var (
     content string
     isExecutable bool
     mainFile string
+    inputFile string
 
     listCategories bool
     listTags bool
@@ -74,6 +76,7 @@ func init() {
 
     gaiaDir = usr.HomeDir + "/" + gaiaDir
     dataFilePath = gaiaDir + dataFileName
+    codeBase = gaiaDir + codeBase
     _, err = os.Stat(gaiaDir)
     if err != nil && os.IsNotExist(err) {
         err = os.MkdirAll(gaiaDir, 0770)
@@ -90,11 +93,11 @@ func init() {
 
 //         switch (subCommand) {
 //         case "add":
-//             subFlag.String("i", "", "leaf id")
-//             subFlag.String("n", "", "leaf name")
-//             subFlag.String("c", "", "leaf category")
-//             subFlag.String("t", "", "leaf tags, tag seprated by comma")
-//             subFlag.String("m", "", "leaf description")
+//             subFlag.String("i", "", "node id")
+//             subFlag.String("n", "", "node name")
+//             subFlag.String("c", "", "node category")
+//             subFlag.String("t", "", "node tags, tag seprated by comma")
+//             subFlag.String("m", "", "node description")
 //         case "update":
 //         case "append":
 //         case "merge":
@@ -137,14 +140,15 @@ func main() {
     }
     switch os.Args[1] {
     case "add":
-        subFlag.StringVar(&id, "i", "", "leaf id")
-        subFlag.StringVar(&name, "n", "", "leaf name")
-        subFlag.StringVar(&category, "c", "", "leaf category")
-        subFlag.StringVar(&tags, "t", "", "leaf tags, tag seprated by comma")
-        subFlag.StringVar(&desc, "m", "", "leaf description")
-        subFlag.StringVar(&content, "b", "", "leaf body content")
-        subFlag.BoolVar(&isExecutable, "e", false, "is leaf executable")
-        subFlag.StringVar(&mainFile, "f", "", "executable main file name")
+        subFlag.StringVar(&id, "i", "", "node id")
+        subFlag.StringVar(&name, "n", "", "node name")
+        subFlag.StringVar(&category, "c", "", "node category")
+        subFlag.StringVar(&tags, "t", "", "node tags, tag seprated by comma")
+        subFlag.StringVar(&desc, "d", "", "node description")
+        subFlag.StringVar(&content, "b", "", "node body content")
+        subFlag.BoolVar(&isExecutable, "e", false, "is node executable")
+        subFlag.StringVar(&mainFile, "m", "", "executable main file name")
+        subFlag.StringVar(&inputFile, "f", "", "node body content input file")
 
         subFlag.Usage = func() {
             fmt.Printf("Usage: %s %s -n name -c category -b body [<other args>] \n", os.Args[0], os.Args[1])
@@ -156,27 +160,27 @@ func main() {
             subFlag.PrintDefaults()
         }
     case "update":
-        subFlag.StringVar(&id, "i", "", "leaf id")
-        subFlag.StringVar(&content, "b", "", "leaf body content")
+        subFlag.StringVar(&id, "i", "", "node id")
+        subFlag.StringVar(&content, "b", "", "node body content")
     case "append":
-        subFlag.StringVar(&id, "i", "", "leaf id")
-        subFlag.StringVar(&content, "b", "", "leaf append content")
+        subFlag.StringVar(&id, "i", "", "node id")
+        subFlag.StringVar(&content, "b", "", "node append content")
     case "merge":
-        subFlag.StringVar(&id, "i", "", "leaf id")
-        subFlag.StringVar(&oid, "d", "", "dest leaf id")
+        subFlag.StringVar(&id, "i", "", "node id")
+        subFlag.StringVar(&oid, "d", "", "dest node id")
     case "list":
-        subFlag.BoolVar(&listCategories, "c", false, "list leaf categories")
-        subFlag.BoolVar(&listTags, "t", false, "list leaf tags")
+        subFlag.BoolVar(&listCategories, "c", false, "list node categories")
+        subFlag.BoolVar(&listTags, "t", false, "list node tags")
         subFlag.BoolVar(&listNames, "n", false, "list by name parts")
         subFlag.BoolVar(&listAlias, "a", false, "list global keyword alias")
     case "search":
-        subFlag.StringVar(&category, "c", "", "list leaf categories")
+        subFlag.StringVar(&category, "c", "", "list node categories")
     case "remove":
-        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&id, "i", "", "node id")
     case "edit":
-        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&id, "i", "", "node id")
     case "exec":
-        subFlag.StringVar(&id, "i", "", "leaf id")
+        subFlag.StringVar(&id, "i", "", "node id")
     default:
         fmt.Println("Unrecogniz command:", os.Args[1])
         printUsage()
@@ -204,7 +208,12 @@ func processSubCommand(command string) {
         checkRequiredArg("-n", name)
         checkRequiredArg("-c", category)
         checkRequiredArg("-b", content)
-        leaf := Leaf{
+
+        if isExecutable {
+            checkRequiredArg("-f", mainFile)
+        }
+
+        node := Node{
             Name: name,
             Category: category,
             Tags: tags,
@@ -213,7 +222,7 @@ func processSubCommand(command string) {
             IsExecutable: isExecutable,
             MainFileName: mainFile,
         }
-        op.Add(leaf)
+        op.Add(node)
     case "alias":
         aliasArgs := subFlag.Args()
         if len(aliasArgs) != 2 {
@@ -223,11 +232,11 @@ func processSubCommand(command string) {
         op.AddAlias(aliasArgs[0], aliasArgs[1])
 
     case "update":
-        // leaf := parseArgs(os.Args)
-        // op.Update(leaf)
+        // node := parseArgs(os.Args)
+        // op.Update(node)
     case "append":
-        // leaf := parseArgs(os.Args)
-        // op.Append(leaf.Id, leaf.Content)
+        // node := parseArgs(os.Args)
+        // op.Append(node.Id, node.Content)
     case "merge":
         // ids := os.Args[2:]
         // op.Merge(ids...)
@@ -247,8 +256,8 @@ func processSubCommand(command string) {
     // case "list-t":
     //     op.ListTags()
     case "search":
-        // leaf := parseArgs(os.Args)
-        // op.Search(leaf.Category, leaf.Tags)
+        // node := parseArgs(os.Args)
+        // op.Search(node.Category, node.Tags)
     case "remove":
         id := os.Args[2]
         fmt.Println("Are you sure to remove code segment with id("+id+")?", "  yes|no")
@@ -285,7 +294,7 @@ func checkRequiredArg(argName, argValue string) {
     }
 }
 
-// func parseArgs(args []string) Leaf {
+// func parseArgs(args []string) Node {
 //     var ind = func(s string) int {
 //         for i, a := range args {
 //             if a == s {
@@ -321,7 +330,7 @@ func checkRequiredArg(argName, argValue string) {
 //         tagStr = strings.Join(args[argsLen:], ",")
 //     }
 
-//     return Leaf{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
+//     return Node{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
 // }
 
 func printUsage() {

@@ -7,17 +7,17 @@ import (
     "strings"
 )
 
-type Leaf struct {
+type Node struct {
     Id, Name, Category, Tags, Desc, Content string
     IsExecutable bool
     MainFileName string
 }
 
-func (lf Leaf) PrintToScreen() {
+func (node Node) PrintToScreen() {
     fmt.Printf("     ID: %s\n   NAME: %s\n   CATE: %s\n   TAGS: %s\n",
-        lf.Id, lf.Name, lf.Category, lf.Tags)
-    fmt.Printf("   DESC: %s\n", lf.Desc)
-    codeLines := strings.Split(lf.Content, "\n")
+        node.Id, node.Name, node.Category, node.Tags)
+    fmt.Printf("   DESC: %s\n", node.Desc)
+    codeLines := strings.Split(node.Content, "\n")
     for i, line := range codeLines {
         if i == 0 {
             fmt.Println("CONTENT:")
@@ -28,19 +28,19 @@ func (lf Leaf) PrintToScreen() {
     }
 }
 
-func (lf Leaf) PrintToFile(fpath string) error {
+func (node Node) PrintToFile(fpath string) error {
     f, err := os.OpenFile(fpath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
     if err != nil {
         return err
     }
     defer f.Close()
 
-    f.WriteString("Id:       " + lf.Id + "\n")
-    f.WriteString("Category: " + lf.Category + "\n")
-    f.WriteString("Tags:     " + lf.Tags + "\n")
-    f.WriteString("Desc:     " + lf.Desc + "\n")
+    f.WriteString("Id:       " + node.Id + "\n")
+    f.WriteString("Category: " + node.Category + "\n")
+    f.WriteString("Tags:     " + node.Tags + "\n")
+    f.WriteString("Desc:     " + node.Desc + "\n")
 
-    codeLines := strings.Split(lf.Content, "\n")
+    codeLines := strings.Split(node.Content, "\n")
     for i, line := range codeLines {
         if i == 0 {
             f.WriteString("Content:  " + line + "\n")
@@ -51,7 +51,7 @@ func (lf Leaf) PrintToFile(fpath string) error {
     return nil
 }
 
-func (lf *Leaf) ReadFromFile(fpath string) error {
+func (node *Node) ReadFromFile(fpath string) error {
     f, err := os.Open(fpath)
     if err != nil {
         return err
@@ -65,17 +65,17 @@ func (lf *Leaf) ReadFromFile(fpath string) error {
     for scanner.Scan() {
         line := scanner.Text()
         if strings.HasPrefix(line, "Id:") {
-            lf.Id = strings.TrimSpace(line[len("Id:"):])
+            node.Id = strings.TrimSpace(line[len("Id:"):])
         } else if strings.HasPrefix(line, "Category:") {
-            lf.Category = strings.TrimSpace(line[len("Category:"):])
+            node.Category = strings.TrimSpace(line[len("Category:"):])
         } else if strings.HasPrefix(line, "Tags:") {
-            lf.Tags = strings.TrimSpace(line[len("Tags:"):])
+            node.Tags = strings.TrimSpace(line[len("Tags:"):])
         } else if strings.HasPrefix(line, "Desc:") {
-            lf.Desc = strings.TrimSpace(line[len("Desc:"):])
+            node.Desc = strings.TrimSpace(line[len("Desc:"):])
             isDescLine = true
             isCodeLine = false
         } else if strings.HasPrefix(line, "Content:") {
-            lf.Content = strings.TrimSpace(line[len("Content:"):])
+            node.Content = strings.TrimSpace(line[len("Content:"):])
             isCodeLine = true
             isDescLine = false
         } else {
@@ -86,8 +86,8 @@ func (lf *Leaf) ReadFromFile(fpath string) error {
                 } else {
                     descLine = strings.TrimSpace(line)
                 }
-                lf.Desc = lf.Desc + "\n" + descLine
-                //fmt.Println("lf.Desc:", lf.Desc)
+                node.Desc = node.Desc + "\n" + descLine
+                //fmt.Println("node.Desc:", node.Desc)
             }
 
             if isCodeLine {
@@ -97,7 +97,7 @@ func (lf *Leaf) ReadFromFile(fpath string) error {
                 } else {
                     codeLine = strings.TrimSpace(line)
                 }
-                lf.Content = lf.Content + "\n" + codeLine
+                node.Content = node.Content + "\n" + codeLine
             }
         }
     }

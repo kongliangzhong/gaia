@@ -1,13 +1,13 @@
 package main
 
 type Store interface {
-    Add(lf Leaf) error
+    Add(node Node) error
     AddAlias(from, to string) error
-    Update(lf Leaf) error
+    Update(node Node) error
     Append(id string, extraContent string) error
-    Search(category string, tagStr string) []Leaf
+    Search(category string, tagStr string) []Node
     Remove(id string) error
-    GetById(id string) (Leaf, error)
+    GetById(id string) (Node, error)
     GetStats() Stats
     GetAlias() map[string]string
 }
