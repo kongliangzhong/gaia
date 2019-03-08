@@ -5,19 +5,18 @@ type Store interface {
     AddAlias(from, to string) error
     Update(node Node) error
     Append(id string, extraContent string) error
-    Search(category string, tagStr string) []Node
+    Search(category string, keywords []string) []Node
     Remove(id string) error
     GetById(id string) (Node, error)
     GetStats() Stats
     GetAlias() map[string]string
+    ListCategories() map[string][]string
+    ListNodes(names []string) []Node
 }
 
 type Stats struct {
-    TotalSize int
-    AllCates     []string
-    AllTags      []string
-    CateTagsMap  map[string][]string
-    CateNumMap   map[string]int
-    TagCatesMap  map[string][]string
-    TagNumMap    map[string]int
+    CategorySize int
+    NodeSize     int
+    TagSize      int
+    Name0Size    int
 }

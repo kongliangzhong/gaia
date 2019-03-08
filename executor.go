@@ -17,7 +17,7 @@ var Depencies string = "deps"
 type ProjectType int
 
 const (
-    NODE ProjectType = iota
+    NODEJS ProjectType = iota
     TYPESCRIPT
     JAVA
     SCALA
@@ -49,7 +49,7 @@ func (executor *Executor) setType() {
     ext := filepath.Ext(executor.File)
     switch ext {
     case ".js":
-        executor.Type = NODE
+        executor.Type = NODEJS
     case ".ts":
         executor.Type = TYPESCRIPT
     case ".java":
@@ -167,7 +167,7 @@ func (executor *Executor) generateBuildScript() {
 
     fileLines := strings.Split(string(fileContent), "\n")
     switch executor.Type {
-    case NODE:
+    case NODEJS:
         generateNodeFile(fileLines, executor.TmpDir)
         executor.Command = "npm install; node " + executor.MainFile
     case SCALA:
@@ -266,7 +266,7 @@ func generateSbtFile(props []string, projectDir string) {
         res := line
         allSpaceTrimed := strings.Replace(line, " ", "", -1)
         if strings.HasPrefix(allSpaceTrimed, "deps+=") {
-            res = "libraryDependencies" + strings.TrimLeft(res, "deps")
+            res = "libraryDependencies" + strings.TrimPrefix(res, "deps")
         }
 
         return res

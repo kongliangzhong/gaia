@@ -6,6 +6,7 @@ import (
     "os"
     "os/user"
     "strings"
+    "io/ioutil"
 )
 
 // TODO: read and write global vars from/into store
@@ -16,6 +17,11 @@ import (
 // TODO: copy code to clipboard
 
 // TODO: read all items by skip:count
+// TODO: generate all as a pdf file.
+
+// CARD NOTE
+
+// card note chain:  exchange card.
 
 var gaiaDir = ".gaia/"
 const dataFileName = "data/data.json"
@@ -33,6 +39,7 @@ var subCommands = []string{
     "remove",
     "edit",
     "exec",
+    "stats",
 }
 
 var subCommandMap = map[string]string{
@@ -46,6 +53,7 @@ var subCommandMap = map[string]string{
     "remove": "remove item by id",
     "edit": "edit item in vi",
     "exec": "execute item",
+    "stats": "stats info",
 }
 
 var (
@@ -58,7 +66,7 @@ var (
     tags string
     desc string
     content string
-    isExecutable bool
+    executable bool
     mainFile string
     inputFile string
 
@@ -66,6 +74,7 @@ var (
     listTags bool
     listAlias bool
     listNames bool
+    countStats bool
 )
 
 func init() {
@@ -146,7 +155,7 @@ func main() {
         subFlag.StringVar(&tags, "t", "", "node tags, tag seprated by comma")
         subFlag.StringVar(&desc, "d", "", "node description")
         subFlag.StringVar(&content, "b", "", "node body content")
-        subFlag.BoolVar(&isExecutable, "e", false, "is node executable")
+        subFlag.BoolVar(&executable, "e", false, "is node executable")
         subFlag.StringVar(&mainFile, "m", "", "executable main file name")
         subFlag.StringVar(&inputFile, "f", "", "node body content input file")
 
@@ -174,13 +183,15 @@ func main() {
         subFlag.BoolVar(&listNames, "n", false, "list by name parts")
         subFlag.BoolVar(&listAlias, "a", false, "list global keyword alias")
     case "search":
-        subFlag.StringVar(&category, "c", "", "list node categories")
+        subFlag.StringVar(&category, "c", "", "search in certain category")
     case "remove":
         subFlag.StringVar(&id, "i", "", "node id")
     case "edit":
         subFlag.StringVar(&id, "i", "", "node id")
     case "exec":
         subFlag.StringVar(&id, "i", "", "node id")
+    case "stats":
+        subFlag.BoolVar(&countStats, "n", false, "count stats")
     default:
         fmt.Println("Unrecogniz command:", os.Args[1])
         printUsage()
@@ -202,15 +213,27 @@ func main() {
 
 func processSubCommand(command string) {
     op := newOperator(newJsonFileStore(dataFilePath))
+    // fmt.Println("dataFilePath:", dataFilePath)
 
     switch command {
     case "add":
         checkRequiredArg("-n", name)
-        checkRequiredArg("-c", category)
-        checkRequiredArg("-b", content)
+        // checkRequiredArg("-c", category)
+        if executable {
+            checkRequiredArg("-m", mainFile)
+        }
+        if content == "" {
+            if inputFile == "" {
+                fmt.Println("-b and -f can not both be empty")
+                os.Exit(2)
+            }
 
-        if isExecutable {
-            checkRequiredArg("-f", mainFile)
+            contentBs, _ := ioutil.ReadFile(inputFile)
+            content = string(contentBs)
+        }
+        if strings.TrimSpace(content) == "" {
+            fmt.Println("node content is empty!")
+            os.Exit(2)
         }
 
         node := Node{
@@ -219,8 +242,8 @@ func processSubCommand(command string) {
             Tags: tags,
             Desc: desc,
             Content: content,
-            IsExecutable: isExecutable,
-            MainFileName: mainFile,
+            Executable: executable,
+            ExecFile: mainFile,
         }
         op.Add(node)
     case "alias":
@@ -244,20 +267,20 @@ func processSubCommand(command string) {
         if listAlias {
             op.ListAlias()
         } else if listCategories {
-
+            op.ListCates()
         } else if listTags {
 
         } else if listNames {
-
+            op.ListNodes(subFlag.Args())
         } else {
-
+            subFlag.Usage()
+            os.Exit(2)
         }
         //op.ListCates()
     // case "list-t":
     //     op.ListTags()
     case "search":
-        // node := parseArgs(os.Args)
-        // op.Search(node.Category, node.Tags)
+        op.Search(category, subFlag.Args())
     case "remove":
         id := os.Args[2]
         fmt.Println("Are you sure to remove code segment with id("+id+")?", "  yes|no")
@@ -277,6 +300,8 @@ func processSubCommand(command string) {
     case "exec":
         file := os.Args[2]
         op.Exec(file)
+    case "stats":
+        op.Stats()
     default:
         fmt.Println("Error: wrong path")
         os.Exit(2)

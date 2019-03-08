@@ -8,7 +8,6 @@ import (
     "os/exec"
     "strings"
     "github.com/satori/go.uuid"
-    "strconv"
 )
 
 const resultDelimiter = "--------------------------------------------------------"
@@ -73,13 +72,19 @@ func (op *Operator) Append(id string, extraContent string) {
     op.err = op.store.Append(id, extraContent)
 }
 
-func (op *Operator) Search(category string, tags string) {
-    matchedNode := op.store.Search(category, tags)
+func (op *Operator) Search(category string, keywords []string) {
+    if category == "" {
+        fmt.Println("Search node with keywords:", keywords)
+    } else {
+        fmt.Println("Search node with keywords:", keywords, "in category:", category)
+    }
+
+    matchedNode := op.store.Search(category, keywords)
     size := len(matchedNode)
     if size > 10 {
-        fmt.Println("Found", size, "matched content segments, print first 10 as below:")
+        fmt.Println("Found", size, "matched nodes, print first 10 as below:")
     } else {
-        fmt.Println("Found", size, "matched content segments, print as below:")
+        fmt.Println("Found", size, "matched nodes, print as below:")
     }
     for i, node := range matchedNode {
         if i < 10 {
@@ -166,8 +171,7 @@ func (op *Operator) Edit(id string) {
         return
     }
     defer tmpFile.Close()
-
-    node.PrintToFile(tmpFile.Name())
+    tmpFile.WriteString(node.String())
 
     path, err := exec.LookPath("vi")
     if err != nil {
@@ -221,67 +225,40 @@ func (op *Operator) ListAlias() {
 }
 
 func (op *Operator) ListCates() {
-    stats := op.store.GetStats()
-    head := []string{"INDEX   ", "CATEGORY        ", "NODE-NUM     ", "TAGS"}
-    index := 0
-    format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
-    //fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
+    catesMap := op.store.ListCategories()
+    treeNode := mapListToTree(catesMap, "Categories")
+    treeNode.PrintToScreen(2);
+}
 
-    lineMax := 50
-    for cate, tags := range stats.CateTagsMap {
-        index ++
-        num := stats.CateNumMap[cate]
-        tagLines := []string{}
-        line := ""
-        for i, tag := range tags {
-            if line == "" {
-                line = tag
-            } else {
-                line = line + "," + tag
-            }
-
-            if len(line) > lineMax {
-                if i != len(tags) - 1 {
-                    line = line + ","
-                }
-                tagLines = append(tagLines, line)
-                line = ""
-            } else {
-                if i == len(tags) - 1 {
-                    if strings.HasSuffix(line, ",") {
-                        line = line[:len(line)-1]
-                    }
-                    tagLines = append(tagLines, line)
-                }
-            }
-        }
-
-        for i, tagLine := range tagLines {
-            if i == 0 {
-                fmt.Printf(format, strconv.Itoa(index), cate, strconv.Itoa(num), tagLine)
-            } else {
-                formatNewLine := fmt.Sprintf("%%%ds\n", len(head[0]) + len(head[1]) + len(head[2]) + len(tagLine))
-                fmt.Printf(formatNewLine, tagLine)
-            }
-        }
-
-    }
+func (op *Operator) ListNodes(names []string) {
+    nodeArray := op.store.ListNodes(names)
+    treeNode := nodesToTree(nodeArray, strings.Join(names, "-"))
+    treeNode.PrintToScreen(9);
 }
 
 func (op *Operator) ListTags() {
-    stats := op.store.GetStats()
-    head := []string{"INDEX    ", "TAG                    ", "NODE-NUM ", "CATEGORIES    "}
-    index := 0
-    format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
-    fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
-    for tag, cates := range stats.TagCatesMap {
-        index ++
-        num := stats.TagNumMap[tag]
-        fmt.Printf(format, strconv.Itoa(index), tag, strconv.Itoa(num), strings.Join(cates, ","))
-    }
+    // stats := op.store.GetStats()
+    // head := []string{"INDEX    ", "TAG                    ", "NODE-NUM ", "CATEGORIES    "}
+    // index := 0
+    // format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
+    // fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
+    // for tag, cates := range stats.TagCatesMap {
+    //     index ++
+    //     num := stats.TagNumMap[tag]
+    //     fmt.Printf(format, strconv.Itoa(index), tag, strconv.Itoa(num), strings.Join(cates, ","))
+    // }
 }
 
 func (op *Operator) Exec(file string) {
     executor := newExecutor(file)
     executor.Execute()
+}
+
+func (op *Operator) Stats() {
+    stats := op.store.GetStats()
+    fmt.Println("Stats:")
+    fmt.Printf("    CategorySize: %d\n", stats.CategorySize)
+    fmt.Printf("    NodeSize:     %d\n", stats.NodeSize)
+    fmt.Printf("    TagSize:      %d\n", stats.TagSize)
+    fmt.Printf("    Name0Size:    %d\n", stats.Name0Size)
 }
