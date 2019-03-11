@@ -157,6 +157,8 @@ func (op *Operator) Merge(ids ...string) {
 
 func (op *Operator) Edit(id string) {
     node, err := op.store.GetById(id)
+    oldName := node.Name
+
     if err != nil {
         op.err = err
         return
@@ -204,11 +206,12 @@ func (op *Operator) Edit(id string) {
         return
     }
     //node.PrintToScreen()
-
-    oldId := node.Id
-    node.Id = ""
-    op.Remove(oldId)
-    op.Add(node)
+    if oldName == node.Name {
+        op.Update(node)
+    } else {
+        op.Remove(id)
+        op.Add(node)
+    }
 }
 
 func (op *Operator) ListAlias() {
@@ -237,6 +240,7 @@ func (op *Operator) ListNodes(names []string) {
 }
 
 func (op *Operator) ListTags() {
+    op.err = errors.New("not implemented yet.")
     // stats := op.store.GetStats()
     // head := []string{"INDEX    ", "TAG                    ", "NODE-NUM ", "CATEGORIES    "}
     // index := 0
@@ -254,6 +258,21 @@ func (op *Operator) Exec(file string) {
     executor.Execute()
 }
 
+func (op *Operator) Get(id string, onlyContent bool) {
+    node, err := op.store.GetById(id)
+    if err != nil {
+        op.err = err
+    } else {
+        if onlyContent {
+            fmt.Println(node.Content)
+        } else {
+            fmt.Println(resultDelimiter)
+            fmt.Println(node)
+            fmt.Println(resultDelimiter)
+        }
+    }
+}
+
 func (op *Operator) Stats() {
     stats := op.store.GetStats()
     fmt.Println("Stats:")
@@ -261,4 +280,8 @@ func (op *Operator) Stats() {
     fmt.Printf("    NodeSize:     %d\n", stats.NodeSize)
     fmt.Printf("    TagSize:      %d\n", stats.TagSize)
     fmt.Printf("    Name0Size:    %d\n", stats.Name0Size)
+}
+
+func (op *Operator) FormatData() {
+    op.store.FormatData()
 }

@@ -30,8 +30,8 @@ var codeBase = "codebase/"
 
 var subCommands = []string{
     "add",
+    "get",
     "alias",
-    "update",
     "append",
     "merge",
     "list",
@@ -40,12 +40,13 @@ var subCommands = []string{
     "edit",
     "exec",
     "stats",
+    "admin",
 }
 
 var subCommandMap = map[string]string{
     "add": "add item",
+    "get": "get item by id",
     "alias": "add keyword alias",
-    "update": "update item",
     "append": "append text to item content",
     "merge": "merge two item into one",
     "list": "list items",
@@ -54,6 +55,7 @@ var subCommandMap = map[string]string{
     "edit": "edit item in vi",
     "exec": "execute item",
     "stats": "stats info",
+    "admin": "admin",
 }
 
 var (
@@ -75,6 +77,8 @@ var (
     listAlias bool
     listNames bool
     countStats bool
+    onlyContent bool
+    isFormat bool
 )
 
 func init() {
@@ -107,7 +111,6 @@ func init() {
 //             subFlag.String("c", "", "node category")
 //             subFlag.String("t", "", "node tags, tag seprated by comma")
 //             subFlag.String("m", "", "node description")
-//         case "update":
 //         case "append":
 //         case "merge":
 //         case "list":
@@ -163,14 +166,14 @@ func main() {
             fmt.Printf("Usage: %s %s -n name -c category -b body [<other args>] \n", os.Args[0], os.Args[1])
             subFlag.PrintDefaults()
         }
+    case "get":
+        subFlag.StringVar(&id, "i", "", "node id")
+        subFlag.BoolVar(&onlyContent, "c", false, "only print content")
     case "alias":
         subFlag.Usage = func() {
             fmt.Printf("Usage: %s %s <keyword> <target-keyword> \n", os.Args[0], os.Args[1])
             subFlag.PrintDefaults()
         }
-    case "update":
-        subFlag.StringVar(&id, "i", "", "node id")
-        subFlag.StringVar(&content, "b", "", "node body content")
     case "append":
         subFlag.StringVar(&id, "i", "", "node id")
         subFlag.StringVar(&content, "b", "", "node append content")
@@ -192,6 +195,8 @@ func main() {
         subFlag.StringVar(&id, "i", "", "node id")
     case "stats":
         subFlag.BoolVar(&countStats, "n", false, "count stats")
+    case "admin":
+        subFlag.BoolVar(&isFormat, "f", false, "format all data")
     default:
         fmt.Println("Unrecogniz command:", os.Args[1])
         printUsage()
@@ -246,6 +251,11 @@ func processSubCommand(command string) {
             ExecFile: mainFile,
         }
         op.Add(node)
+    case "get":
+        if id == "" && len(subFlag.Args()) > 0 {
+            id = subFlag.Args()[0]
+        }
+        op.Get(id, onlyContent)
     case "alias":
         aliasArgs := subFlag.Args()
         if len(aliasArgs) != 2 {
@@ -253,10 +263,6 @@ func processSubCommand(command string) {
             os.Exit(2)
         }
         op.AddAlias(aliasArgs[0], aliasArgs[1])
-
-    case "update":
-        // node := parseArgs(os.Args)
-        // op.Update(node)
     case "append":
         // node := parseArgs(os.Args)
         // op.Append(node.Id, node.Content)
@@ -269,21 +275,17 @@ func processSubCommand(command string) {
         } else if listCategories {
             op.ListCates()
         } else if listTags {
-
+            op.ListTags()
         } else if listNames {
             op.ListNodes(subFlag.Args())
         } else {
             subFlag.Usage()
             os.Exit(2)
         }
-        //op.ListCates()
-    // case "list-t":
-    //     op.ListTags()
     case "search":
         op.Search(category, subFlag.Args())
     case "remove":
-        id := os.Args[2]
-        fmt.Println("Are you sure to remove code segment with id("+id+")?", "  yes|no")
+        fmt.Println("Are you sure to remove node with id "+ id +"?", "  yes|no")
         var response string
         _, err := fmt.Scanln(&response)
         if err != nil {
@@ -295,13 +297,21 @@ func processSubCommand(command string) {
             op.Remove(id)
         }
     case "edit":
-        id := os.Args[2]
+        // fmt.Println("id:", id)
+        if id == "" && len(subFlag.Args()) > 0 {
+            id = subFlag.Args()[0]
+        }
+
         op.Edit(id)
     case "exec":
         file := os.Args[2]
         op.Exec(file)
     case "stats":
         op.Stats()
+    case "admin":
+        if isFormat {
+            op.FormatData()
+        }
     default:
         fmt.Println("Error: wrong path")
         os.Exit(2)
@@ -318,45 +328,6 @@ func checkRequiredArg(argName, argValue string) {
         os.Exit(2)
     }
 }
-
-// func parseArgs(args []string) Node {
-//     var ind = func(s string) int {
-//         for i, a := range args {
-//             if a == s {
-//                 return i
-//             }
-//         }
-//         return -1
-//     }
-
-//     var argsLen = 2
-//     var getParam = func(flag string) string {
-//         if ind_flag := ind(flag); ind_flag > 0 {
-//             //fmt.Printf("flag:%s, index:%d ", flag, ind_flag)
-//             if len(args) <= ind_flag+1 {
-//                 fmt.Println("missing parameter value for ", flag)
-//             }
-//             argsLen += 2
-//             return args[ind_flag+1]
-//         }
-//         return ""
-//     }
-
-//     id := getParam("-i")
-//     cate := getParam("-c")
-//     tagStr := getParam("-t")
-//     desc := getParam("-m")
-//     var content string
-//     if len(args) > argsLen {
-//         content = strings.Join(args[argsLen:], " ")
-//     }
-
-//     if args[1] == "search" {
-//         tagStr = strings.Join(args[argsLen:], ",")
-//     }
-
-//     return Node{Id: id, Category: cate, Tags: tagStr, Desc: desc, Content: content}
-// }
 
 func printUsage() {
     fmt.Printf("Usage: %s <command> <args...> \n", os.Args[0])

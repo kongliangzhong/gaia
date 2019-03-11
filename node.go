@@ -16,19 +16,28 @@ type Node struct {
 
 var CodePrefixSpace string = "          " // len:10
 
+func (node Node) DoTrim() Node {
+    node.Id = strings.TrimSpace(node.Id)
+    node.Name = strings.TrimSpace(node.Name)
+    node.Category = strings.TrimSpace(node.Category)
+    node.Tags = strings.TrimSpace(node.Tags)
+    node.Desc = strings.TrimSpace(node.Desc)
+    return node
+}
+
 func (node Node) String() string {
     res := ""
     res += fmt.Sprintf("        Id: %s\n", node.Id)
     res += fmt.Sprintf("      Name: %s\n", node.Name)
     res += fmt.Sprintf("  Category: %s\n", node.Category)
     res += fmt.Sprintf("      Tags: %s\n", node.Tags)
-    res += fmt.Sprintf("Executable: %s\n", node.Executable)
+    res += fmt.Sprintf("Executable: %t\n", node.Executable)
     res += fmt.Sprintf("  ExecFile: %s\n", node.ExecFile)
     res += fmt.Sprintf("      Desc: %s\n", node.Desc)
     codeLines := strings.Split(node.Content, "\n")
     for i, line := range codeLines {
         if i == 0 {
-            res += fmt.Sprintln("   CONTENT:")
+            res += fmt.Sprintln("   Content:")
             res += fmt.Sprintln("    " + line)
         } else {
             res += fmt.Sprintln("    " + line)
@@ -40,29 +49,6 @@ func (node Node) String() string {
 func (node Node) PrintToScreen() {
     fmt.Println(node.String())
 }
-
-// func (node Node) PrintToFile(fpath string) error {
-//     f, err := os.OpenFile(fpath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
-//     if err != nil {
-//         return err
-//     }
-//     defer f.Close()
-
-//     f.WriteString("Id:       " + node.Id + "\n")
-//     f.WriteString("Category: " + node.Category + "\n")
-//     f.WriteString("Tags:     " + node.Tags + "\n")
-//     f.WriteString("Desc:     " + node.Desc + "\n")
-
-//     codeLines := strings.Split(node.Content, "\n")
-//     for i, line := range codeLines {
-//         if i == 0 {
-//             f.WriteString("Content:  " + line + "\n")
-//         } else {
-//             f.WriteString(CodePrefixSpace + line + "\n")
-//         }
-//     }
-//     return nil
-// }
 
 func (node *Node) Normalize() error {
     node.Name = strings.ToLower(node.Name)

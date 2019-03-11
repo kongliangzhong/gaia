@@ -12,6 +12,7 @@ type Store interface {
     GetAlias() map[string]string
     ListCategories() map[string][]string
     ListNodes(names []string) []Node
+    FormatData()
 }
 
 type Stats struct {
