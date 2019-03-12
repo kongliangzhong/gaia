@@ -9,10 +9,6 @@ import (
     "io/ioutil"
 )
 
-// TODO: read and write global vars from/into store
-// TODO: add alias globally for search purpose.
-// TODO: generate tree by name
-// TODO: search: in tree
 // TODO: execute code from system clipboard
 // TODO: copy code to clipboard
 
@@ -20,7 +16,6 @@ import (
 // TODO: generate all as a pdf file.
 
 // CARD NOTE
-
 // card note chain:  exchange card.
 
 var gaiaDir = ".gaia/"

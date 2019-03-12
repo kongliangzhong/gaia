@@ -36,7 +36,6 @@ func mapListToTree(mapList map[string][]string, root string) *TreeNode {
 
 func nodesToTree(nodes []Node, prefix string) *TreeNode {
     prefix = strings.TrimSpace(prefix)
-
     // fmt.Println("nodes len: ", len(nodes), "prefix:|", prefix, "|")
     rootNode := &TreeNode{}
     rootChildren := []*TreeNode{}
@@ -105,41 +104,61 @@ func (treeNode *TreeNode) removeDuplicatedChild() {
  │   └── a1
  └── b
 */
-func (treeNode *TreeNode) PrintToScreen(maxDepth int) {
-    if maxDepth < 2 {
-        maxDepth = 2
-    }
-
-    npList := treeNode.flattenForPrint(0, maxDepth, false)
-    lines := ""
-    isInLast := false
-    for _, np := range npList {
-        // fmt.Println("np:", np)
-
-        line := np.label
-        if np.depth > 0 {
-            if np.isLast {
-                line = "└── " + line
-                isInLast = true
-            } else {
-                line = "├── " + line
-            }
-
-            if !isInLast {
-                if np.depth >= 2 {
-                    prefix := "│   "
-                    prefix += strings.Repeat(prefix, np.depth - 1)
-                    line = prefix + line
-                }
-            } else {
-                line = strings.Repeat(" ", 4 * (np.depth - 1)) + line
-            }
-        }
-        lines += "  " + line + "\n"
-    }
-
-    fmt.Print(lines)
+func (treeNode *TreeNode) PrintToScreen() {
+    treeLines := generateNodeLines(treeNode, "")
+    lines := strings.Join(treeLines, "\n")
+    fmt.Println(lines)
 }
+
+func generateNodeLines(tn *TreeNode, prefix string) []string {
+    label := tn.Name
+    if tn.Name == "" {
+        label = "ROOT"
+    }
+    if tn.Id != "" {
+        label = tn.Name + "(" + tn.Id + ")"
+    }
+
+    nodeLines := []string{ prefix + label }
+    var childLines []string
+    var childLine string
+    newPrefix := prefix
+    if strings.HasSuffix(newPrefix, "└── ") {
+        newPrefix = strings.TrimSuffix(prefix, "└── ") + "    "
+    } else if strings.HasSuffix(newPrefix, "├── ") {
+        newPrefix = strings.TrimSuffix(prefix, "├── ") + "│   "
+    }
+
+    for i, childNode := range tn.Children {
+        var childPrefix string
+        if i == len(tn.Children) - 1 {
+            childLine = newPrefix + "└── " + childNode.Name
+            childPrefix = newPrefix + "    "
+        } else {
+            childLine = newPrefix + "├── " + childNode.Name
+            childPrefix = newPrefix  + "│   "
+        }
+        if strings.TrimSpace(childNode.Id) != "" {
+            childLine += "(" + childNode.Id + ")"
+        }
+        childLines = append(childLines, childLine)
+
+        for j, grandChild := range childNode.Children {
+            var grandChildPrefix string
+            if j == len(childNode.Children) - 1 {
+                grandChildPrefix = childPrefix + "└── "
+            } else {
+                grandChildPrefix = childPrefix + "├── "
+            }
+            grandChildLines := generateNodeLines(grandChild, grandChildPrefix)
+            childLines = append(childLines, grandChildLines...)
+        }
+
+    }
+    nodeLines = append(nodeLines, childLines...)
+    return nodeLines
+}
+
 
 func (treeNode *TreeNode) flattenForPrint(depth int, maxDepth int, isLast bool) []NodeForPrint {
     if depth >= maxDepth {

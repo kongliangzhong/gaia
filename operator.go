@@ -235,14 +235,14 @@ func (op *Operator) ListAlias() {
 func (op *Operator) ListCates() {
     catesMap := op.store.ListCategories()
     treeNode := mapListToTree(catesMap, "Categories")
-    treeNode.PrintToScreen(3);
+    treeNode.PrintToScreen();
 }
 
 func (op *Operator) ListNodes(names []string) {
     namesPlaced := op.store.ReplaceAlias(names)
     nodeArray := op.store.ListNodes(namesPlaced)
     treeNode := nodesToTree(nodeArray, strings.Join(namesPlaced, "-"))
-    treeNode.PrintToScreen(9);
+    treeNode.PrintToScreen();
 }
 
 func (op *Operator) ListTags() {

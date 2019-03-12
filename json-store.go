@@ -74,6 +74,10 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
         return errors.New("node name exist:" + node.Name)
     }
 
+    if node.Name == "" {
+        return errors.New("node name is empty")
+    }
+
     id, err := generateId()
     if err != nil{
         return err

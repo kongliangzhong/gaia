@@ -123,5 +123,7 @@ func (node *Node) ReadFromFile(fpath string) error {
             }
         }
     }
+
+    node.Content = strings.TrimPrefix(node.Content, "\n")
     return node.Normalize(map[string]string{})
 }
