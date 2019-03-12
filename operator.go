@@ -30,10 +30,18 @@ func (op *Operator) Add(node Node) {
 }
 
 func (op *Operator) AddAlias(from, to string) {
+    if op.err != nil {
+        return
+    }
+
     op.err = op.store.AddAlias(from, to)
 }
 
 func (op *Operator) RemoveAlias(keyword string) {
+    if op.err != nil {
+        return
+    }
+
     op.err = op.store.RemoveAlias(keyword)
 }
 
@@ -62,7 +70,8 @@ func (op *Operator) Search(category string, keywords []string) {
         fmt.Println("Search node with keywords:", keywords, "in category:", category)
     }
 
-    matchedNode := op.store.Search(category, keywords)
+    keywordsReplaced := op.store.ReplaceAlias(keywords)
+    matchedNode := op.store.Search(category, keywordsReplaced)
     size := len(matchedNode)
     if size > 10 {
         fmt.Println("Found", size, "matched nodes, print first 10 as below:")
@@ -72,7 +81,7 @@ func (op *Operator) Search(category string, keywords []string) {
     for i, node := range matchedNode {
         if i < 10 {
             fmt.Println(resultDelimiter)
-            node.PrintToScreen()
+            fmt.Println(node.ShortString())
         } else {
             break
         }
@@ -201,12 +210,12 @@ func (op *Operator) Edit(id string) {
         op.err = err
         return
     }
-    //node.PrintToScreen()
+
     if oldName == node.Name {
         op.Update(node)
     } else {
-        op.Remove(id)
         op.Add(node)
+        op.Remove(id)
     }
 }
 
@@ -230,8 +239,9 @@ func (op *Operator) ListCates() {
 }
 
 func (op *Operator) ListNodes(names []string) {
-    nodeArray := op.store.ListNodes(names)
-    treeNode := nodesToTree(nodeArray, strings.Join(names, "-"))
+    namesPlaced := op.store.ReplaceAlias(names)
+    nodeArray := op.store.ListNodes(namesPlaced)
+    treeNode := nodesToTree(nodeArray, strings.Join(namesPlaced, "-"))
     treeNode.PrintToScreen(9);
 }
 

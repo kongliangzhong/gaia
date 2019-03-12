@@ -16,11 +16,19 @@ type Node struct {
 
 var CodePrefixSpace string = "          " // len:10
 
+func (node Node) ShortString() string {
+    res := ""
+    res += fmt.Sprintf("        Id: %s\n", node.Id)
+    res += fmt.Sprintf("      Name: %s\n", node.Name)
+    res += fmt.Sprintf("      Desc: %s\n", node.Desc)
+    return res
+}
+
 func (node Node) String() string {
     res := ""
     res += fmt.Sprintf("        Id: %s\n", node.Id)
     res += fmt.Sprintf("      Name: %s\n", node.Name)
-    res += fmt.Sprintf("  Category: %s\n", node.Category)
+    // res += fmt.Sprintf("  Category: %s\n", node.Category)
     res += fmt.Sprintf("      Tags: %s\n", node.Tags)
     res += fmt.Sprintf("Executable: %t\n", node.Executable)
     res += fmt.Sprintf("  ExecFile: %s\n", node.ExecFile)
@@ -52,13 +60,15 @@ func (node *Node) Normalize(aliasMap map[string]string) error {
             for _, part := range parts {
                 if aliasMap[part] != "" {
                     resultParts = append(resultParts, aliasMap[part])
+                } else {
+                    resultParts = append(resultParts, part)
                 }
             }
-
             return strings.Join(resultParts, sep)
         }
     }
 
+    node.Id = normalizeStr(node.Id, "")
     node.Name = normalizeStr(node.Name, "-")
     node.Category = normalizeStr(node.Category, "")
     node.Tags = normalizeStr(node.Tags, ",")
@@ -113,5 +123,5 @@ func (node *Node) ReadFromFile(fpath string) error {
             }
         }
     }
-    return nil
+    return node.Normalize(map[string]string{})
 }

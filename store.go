@@ -13,6 +13,7 @@ type Store interface {
     GetAlias() map[string]string
     ListCategories() map[string][]string
     ListNodes(names []string) []Node
+    ReplaceAlias(strArr []string) []string
     FormatData()
 }
 

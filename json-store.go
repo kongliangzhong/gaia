@@ -43,7 +43,7 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
             }
 
             for i := 0; i < 256; i++ {
-                idPrefix := fmt.Sprintf("%02x", i)
+                idPrefix = fmt.Sprintf("%02x", i)
                 if !prefixUsageMap[idPrefix] {
                     jsonStore.gaiaData.CategoryIdMap[parts[0]] = idPrefix
                     break
@@ -132,19 +132,6 @@ func (jsonStore *JsonFileStore) Append(id string, extraContent string) error {
 func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Node {
     res := []Node{}
 
-    replaceAlias := func (strArr []string) []string {
-        replacedArr := []string{}
-        for _, s := range strArr {
-            s = strings.ToLower(strings.TrimSpace(s))
-            if jsonStore.gaiaData.AliasMap[s] != "" {
-                replacedArr = append(replacedArr, jsonStore.gaiaData.AliasMap[s])
-            } else {
-                replacedArr = append(replacedArr, s)
-            }
-        }
-        return replacedArr
-    }
-
     isCategoryMatch := func(node Node) bool {
         if category == "" {
             return true
@@ -176,9 +163,8 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
         tailAllowed = append(tailAllowed, nameParts[1:]...)
         tailAllowed = append(tailAllowed, tags...)
 
-        replacedKeywords := replaceAlias(keywords)
-        res := arrayContains(headAllowed, nameParts[0])
-        for _, k := range replacedKeywords {
+        res := arrayContains(headAllowed, keywords[0])
+        for _, k := range keywords[1:] {
             res = res && arrayContains(tailAllowed, k)
         }
         return res
@@ -294,6 +280,19 @@ func (jsonStore *JsonFileStore) ListNodes(names []string) []Node {
         }
     }
     return resultArray
+}
+
+func (jsonStore *JsonFileStore) ReplaceAlias(strArr []string) []string {
+    replacedArr := []string{}
+    for _, s := range strArr {
+        s = strings.ToLower(strings.TrimSpace(s))
+        if jsonStore.gaiaData.AliasMap[s] != "" {
+            replacedArr = append(replacedArr, jsonStore.gaiaData.AliasMap[s])
+        } else {
+            replacedArr = append(replacedArr, s)
+        }
+    }
+    return replacedArr
 }
 
 func (jsonStore *JsonFileStore) FormatData() {
