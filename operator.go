@@ -22,27 +22,6 @@ func newOperator(store Store) *Operator {
 }
 
 func (op *Operator) Add(node Node) {
-    // var validate = func() {
-    //     node.Content = strings.TrimSpace(node.Content)
-    //     if node.Content == "" {
-    //         op.err = errors.New("content can not be empty.")
-    //     }
-
-    //     if node.Category == "" && node.Tags == "" {
-    //         op.err = errors.New("category and tags can not be both empty.")
-    //     }
-
-    //     if strings.Contains(node.Category, "|") || strings.Contains(node.Tags, "|") {
-    //         op.err = errors.New("category and tagStr can not contains '|' charactor.")
-    //     }
-    //     return
-    // }
-
-    // if op.err != nil {
-    //     return
-    // }
-
-    // validate()
     if op.err != nil {
         return
     }
@@ -52,6 +31,10 @@ func (op *Operator) Add(node Node) {
 
 func (op *Operator) AddAlias(from, to string) {
     op.err = op.store.AddAlias(from, to)
+}
+
+func (op *Operator) RemoveAlias(keyword string) {
+    op.err = op.store.RemoveAlias(keyword)
 }
 
 func (op *Operator) Update(node Node) {
@@ -102,9 +85,13 @@ func (op *Operator) Remove(id string) {
         return
     }
     op.err = op.store.Remove(id)
+
+    if op.err == nil {
+        fmt.Println("node with id " + id + " has been removed")
+    }
 }
 
-func (op *Operator) Merge(ids ...string) {
+func (op *Operator) Merge(ids []string) {
     var arrContains = func(arr []string, str string) bool {
         for _, s := range arr {
             if str == s {
@@ -114,6 +101,7 @@ func (op *Operator) Merge(ids ...string) {
         return false
     }
 
+    var name string
     var cate string
     var allTags []string
     var desc string
@@ -127,6 +115,7 @@ func (op *Operator) Merge(ids ...string) {
 
         if i == 0 {
             cate = node.Category
+            name = node.Name
         }
 
         desc = desc + "\n" + node.Desc
@@ -148,7 +137,14 @@ func (op *Operator) Merge(ids ...string) {
     desc = strings.TrimSpace(desc)
     content = strings.TrimSpace(content)
     allTagsStr := strings.Join(allTags, ",")
-    mergedNode := Node{Id: "", Category: cate, Tags: allTagsStr, Desc: desc, Content: content}
+    mergedNode := Node{
+        Id: "",
+        Name: name,
+        Category: cate,
+        Tags: allTagsStr,
+        Desc: desc,
+        Content: content,
+    }
     for _, id := range ids {
         op.Remove(id)
     }
@@ -230,7 +226,7 @@ func (op *Operator) ListAlias() {
 func (op *Operator) ListCates() {
     catesMap := op.store.ListCategories()
     treeNode := mapListToTree(catesMap, "Categories")
-    treeNode.PrintToScreen(2);
+    treeNode.PrintToScreen(3);
 }
 
 func (op *Operator) ListNodes(names []string) {
@@ -241,16 +237,6 @@ func (op *Operator) ListNodes(names []string) {
 
 func (op *Operator) ListTags() {
     op.err = errors.New("not implemented yet.")
-    // stats := op.store.GetStats()
-    // head := []string{"INDEX    ", "TAG                    ", "NODE-NUM ", "CATEGORIES    "}
-    // index := 0
-    // format := fmt.Sprintf("%%-%ds%%-%ds%%-%ds%%-%ds\n", len(head[0]), len(head[1]), len(head[2]), len(head[3]))
-    // fmt.Printf("%s%s%s%s\n", head[0], head[1], head[2], head[3])
-    // for tag, cates := range stats.TagCatesMap {
-    //     index ++
-    //     num := stats.TagNumMap[tag]
-    //     fmt.Printf(format, strconv.Itoa(index), tag, strconv.Itoa(num), strings.Join(cates, ","))
-    // }
 }
 
 func (op *Operator) Exec(file string) {
@@ -267,7 +253,7 @@ func (op *Operator) Get(id string, onlyContent bool) {
             fmt.Println(node.Content)
         } else {
             fmt.Println(resultDelimiter)
-            fmt.Println(node)
+            fmt.Print(node)
             fmt.Println(resultDelimiter)
         }
     }

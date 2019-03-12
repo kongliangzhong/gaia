@@ -79,6 +79,7 @@ var (
     countStats bool
     onlyContent bool
     isFormat bool
+    isRemove bool
 )
 
 func init() {
@@ -99,36 +100,6 @@ func init() {
     }
 }
 
-// func setupFlags() {
-//     for _, subCommand := range subCommands {
-//         subFlag := flag.NewFlagSet(subCommand, flag.ExitOnError)
-//         subFlag.String("h", "", "show help message")
-
-//         switch (subCommand) {
-//         case "add":
-//             subFlag.String("i", "", "node id")
-//             subFlag.String("n", "", "node name")
-//             subFlag.String("c", "", "node category")
-//             subFlag.String("t", "", "node tags, tag seprated by comma")
-//             subFlag.String("m", "", "node description")
-//         case "append":
-//         case "merge":
-//         case "list":
-//         case "search":
-//         case "remove":
-//         case "edit":
-//         case "exec":
-
-//         default:
-//             fmt.Println("Unrecgonized command:", subCommand)
-//         }
-
-//     }
-
-//     flag.String("h", "", "show usage")
-//     flag.Usage = printUsage
-// }
-
 func main() {
     flag.BoolVar(&isHelp, "h", false, "show help message")
     if len(os.Args) == 1 {
@@ -136,8 +107,6 @@ func main() {
         os.Exit(-1)
     }
 
-    // fmt.Println("os.Args[1]:", os.Args[1])
-    // flag.Parse()
     flag.Usage = printUsage
 
     if os.Args[1] == "-h" || os.Args[1] == "--help" {
@@ -170,8 +139,10 @@ func main() {
         subFlag.StringVar(&id, "i", "", "node id")
         subFlag.BoolVar(&onlyContent, "c", false, "only print content")
     case "alias":
+        subFlag.BoolVar(&isRemove, "r", false, "remove alias")
         subFlag.Usage = func() {
             fmt.Printf("Usage: %s %s <keyword> <target-keyword> \n", os.Args[0], os.Args[1])
+            fmt.Printf("       %s %s -r <keyword> \n", os.Args[0], os.Args[1])
             subFlag.PrintDefaults()
         }
     case "append":
@@ -223,7 +194,6 @@ func processSubCommand(command string) {
     switch command {
     case "add":
         checkRequiredArg("-n", name)
-        // checkRequiredArg("-c", category)
         if executable {
             checkRequiredArg("-m", mainFile)
         }
@@ -243,7 +213,7 @@ func processSubCommand(command string) {
 
         node := Node{
             Name: name,
-            Category: category,
+            Category: strings.Split(name, "-")[0],
             Tags: tags,
             Desc: desc,
             Content: content,
@@ -258,17 +228,26 @@ func processSubCommand(command string) {
         op.Get(id, onlyContent)
     case "alias":
         aliasArgs := subFlag.Args()
-        if len(aliasArgs) != 2 {
-            subFlag.Usage()
-            os.Exit(2)
+
+        if isRemove {
+            if len(aliasArgs) != 1 {
+                subFlag.Usage()
+                os.Exit(2)
+            }
+            op.RemoveAlias(aliasArgs[0])
+        } else {
+            if len(aliasArgs) != 2 {
+                subFlag.Usage()
+                os.Exit(2)
+            }
+            op.AddAlias(aliasArgs[0], aliasArgs[1])
         }
-        op.AddAlias(aliasArgs[0], aliasArgs[1])
     case "append":
-        // node := parseArgs(os.Args)
-        // op.Append(node.Id, node.Content)
+        extraContent := subFlag.Args()[0]
+        op.Append(id, extraContent)
     case "merge":
-        // ids := os.Args[2:]
-        // op.Merge(ids...)
+        ids := subFlag.Args()
+        op.Merge(ids)
     case "list":
         if listAlias {
             op.ListAlias()

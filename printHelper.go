@@ -120,10 +120,7 @@ func (treeNode *TreeNode) PrintToScreen(maxDepth int) {
         if np.depth > 0 {
             if np.isLast {
                 line = "└── " + line
-
-                if np.depth == 1 {
-                    isInLast = true
-                }
+                isInLast = true
             } else {
                 line = "├── " + line
             }
@@ -131,7 +128,7 @@ func (treeNode *TreeNode) PrintToScreen(maxDepth int) {
             if !isInLast {
                 if np.depth >= 2 {
                     prefix := "│   "
-                    prefix += strings.Repeat(" ", 4 * (np.depth - 2))
+                    prefix += strings.Repeat(prefix, np.depth - 1)
                     line = prefix + line
                 }
             } else {

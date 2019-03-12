@@ -11,7 +11,7 @@ import (
 
 type GaiaData struct {
     AliasMap map[string]string
-    NamePrefixIdMap map[string]string
+    CategoryIdMap map[string]string
     NameIdMap map[string]string // name -> id
     NodeMap map[string]Node  // id -> node map
 }
@@ -31,12 +31,10 @@ func newJsonFileStore(dataFilePath string) *JsonFileStore {
 func (jsonStore *JsonFileStore) Add(node Node) error {
     generateId := func() (string, error) {
         parts := strings.Split(node.Name, "-")
-        id := ""
-        if idPrefix, ok := jsonStore.gaiaData.NamePrefixIdMap[parts[0]]; ok {
-            id = idPrefix
-        } else {
+        idPrefix, ok := jsonStore.gaiaData.CategoryIdMap[parts[0]]
+        if !ok {
             prefixUsageMap := make(map[string]bool)
-            for _, v := range jsonStore.gaiaData.NamePrefixIdMap {
+            for _, v := range jsonStore.gaiaData.CategoryIdMap {
                 prefixUsageMap[v] = true
             }
 
@@ -45,23 +43,24 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
             }
 
             for i := 0; i < 256; i++ {
-                iHex := fmt.Sprintf("%02x", i)
-                if !prefixUsageMap[iHex] {
-                    jsonStore.gaiaData.NamePrefixIdMap[parts[0]] = iHex
-                    id = iHex
+                idPrefix := fmt.Sprintf("%02x", i)
+                if !prefixUsageMap[idPrefix] {
+                    jsonStore.gaiaData.CategoryIdMap[parts[0]] = idPrefix
                     break
                 }
             }
         }
 
-        for i := 0; i < 0xfff; i++ {
-            iHex := fmt.Sprintf("%x", i)
-            id = id + iHex
-            _, exist := jsonStore.gaiaData.NodeMap[id]
+        idTail := ""
+        for j := 0; j < 4095; j++ {
+            idTail = fmt.Sprintf("%x", j)
+            tmpId := idPrefix + idTail
+            _, exist := jsonStore.gaiaData.NodeMap[tmpId]
             if !exist {
                 break
             }
         }
+        id := idPrefix + idTail
 
         if _, exist := jsonStore.gaiaData.NodeMap[id]; exist {
             return "", errors.New("No more space for name prefix:" + parts[0])
@@ -70,7 +69,7 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
         return id, nil
     }
 
-    (&node).Normalize()
+    (&node).Normalize(jsonStore.gaiaData.AliasMap)
     if jsonStore.gaiaData.NameIdMap[node.Name] != "" {
         return errors.New("node name exist:" + node.Name)
     }
@@ -82,7 +81,6 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
 
     fmt.Println("generate new node id:", id)
     node.Id = id
-    node = node.DoTrim()
     jsonStore.gaiaData.NameIdMap[node.Name] = id
     jsonStore.gaiaData.NodeMap[id] = node
 
@@ -90,20 +88,21 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
 }
 
 func (jsonStore *JsonFileStore) AddAlias(from, to string) error {
-    err := jsonStore.load()
-    if err != nil {
-        return err
-    }
-
-    from = strings.TrimSpace("from")
-    to = stringds.TrimSpace("to")
+    from = strings.ToLower(strings.TrimSpace(from))
+    to = strings.ToLower(strings.TrimSpace(to))
 
     jsonStore.gaiaData.AliasMap[from] = to
     return jsonStore.saveToFile()
 }
 
+func (jsonStore *JsonFileStore) RemoveAlias(keyword string) error {
+    keyword = strings.ToLower(strings.TrimSpace(keyword))
+    delete(jsonStore.gaiaData.AliasMap, keyword)
+    return jsonStore.saveToFile()
+}
+
 func (jsonStore *JsonFileStore) Update(node Node) error {
-    node = node.DoTrim()
+    (&node).Normalize(jsonStore.gaiaData.AliasMap)
     old, exist := jsonStore.gaiaData.NodeMap[node.Id]
     if !exist {
         return errors.New("node with id" + node.Id + " is not exist")
@@ -118,11 +117,33 @@ func (jsonStore *JsonFileStore) Update(node Node) error {
 }
 
 func (jsonStore *JsonFileStore) Append(id string, extraContent string) error {
-    return errors.New("unimplemented")
+    node, exist := jsonStore.gaiaData.NodeMap[id]
+    if !exist {
+        return errors.New("node with id " + id + " not exists")
+    }
+
+    oldContent := strings.TrimSpace(node.Content)
+    node.Content = oldContent + "\n\n" + strings.TrimSpace(extraContent)
+    jsonStore.gaiaData.NodeMap[id] = node
+
+    return jsonStore.saveToFile()
 }
 
 func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Node {
     res := []Node{}
+
+    replaceAlias := func (strArr []string) []string {
+        replacedArr := []string{}
+        for _, s := range strArr {
+            s = strings.ToLower(strings.TrimSpace(s))
+            if jsonStore.gaiaData.AliasMap[s] != "" {
+                replacedArr = append(replacedArr, jsonStore.gaiaData.AliasMap[s])
+            } else {
+                replacedArr = append(replacedArr, s)
+            }
+        }
+        return replacedArr
+    }
 
     isCategoryMatch := func(node Node) bool {
         if category == "" {
@@ -155,8 +176,9 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
         tailAllowed = append(tailAllowed, nameParts[1:]...)
         tailAllowed = append(tailAllowed, tags...)
 
+        replacedKeywords := replaceAlias(keywords)
         res := arrayContains(headAllowed, nameParts[0])
-        for _, k := range nameParts[1:] {
+        for _, k := range replacedKeywords {
             res = res && arrayContains(tailAllowed, k)
         }
         return res
@@ -172,7 +194,6 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
 }
 
 func (jsonStore *JsonFileStore) Remove(id string) error {
-    fmt.Println("remove node with id:", id)
     node := jsonStore.gaiaData.NodeMap[id]
     delete(jsonStore.gaiaData.NodeMap, id)
     name := node.Name
@@ -181,14 +202,14 @@ func (jsonStore *JsonFileStore) Remove(id string) error {
     parts := strings.Split(name, "-")
     namePrefixExist := false
     for n, _ := range jsonStore.gaiaData.NameIdMap {
-        if n == parts[0] {
+        if strings.HasPrefix(n, parts[0]) {
             namePrefixExist = true
             break
         }
     }
 
     if !namePrefixExist {
-        delete(jsonStore.gaiaData.NamePrefixIdMap, parts[0])
+        delete(jsonStore.gaiaData.CategoryIdMap, parts[0])
     }
 
     return jsonStore.saveToFile()
@@ -243,17 +264,22 @@ func (jsonStore *JsonFileStore) ListCategories() map[string][]string {
     resultMap := make(map[string][]string)
     for name, id := range jsonStore.gaiaData.NameIdMap {
         node := jsonStore.gaiaData.NodeMap[id]
-        nameHead := strings.Split(name, "-")[0]
-        headList, exist := resultMap[node.Category]
+        parts := strings.Split(name, "-")
+        middlePart := ""
+        if len(parts) > 1 {
+            middlePart = parts[1]
+        } else {
+            continue
+        }
+        middlePartList, exist := resultMap[node.Category]
         if exist {
-            if !existInArray(headList, nameHead) {
-                headList = append(headList, nameHead)
+            if !existInArray(middlePartList, middlePart) {
+                middlePartList = append(middlePartList, middlePart)
             }
         } else {
-            headList = []string{}
-            headList = append(headList, nameHead)
+            middlePartList = []string{ middlePart }
         }
-        resultMap[node.Category] = headList
+        resultMap[node.Category] = middlePartList
     }
 
     return resultMap
@@ -277,11 +303,11 @@ func (jsonStore *JsonFileStore) FormatData() {
     }
     jsonStore.gaiaData.AliasMap = newAliasMap
 
-    newNamePrefixIdMap := make(map[string]string)
-    for k, v := range jsonStore.gaiaData.NamePrefixIdMap {
-        newNamePrefixIdMap[strings.TrimSpace(k)] = strings.TrimSpace(v)
+    newCategoryIdMap := make(map[string]string)
+    for k, v := range jsonStore.gaiaData.CategoryIdMap {
+        newCategoryIdMap[strings.TrimSpace(k)] = strings.TrimSpace(v)
     }
-    jsonStore.gaiaData.NamePrefixIdMap = newNamePrefixIdMap
+    jsonStore.gaiaData.CategoryIdMap = newCategoryIdMap
 
     newNameIdMap := make(map[string]string)
     for k, v := range jsonStore.gaiaData.NameIdMap {
@@ -291,7 +317,8 @@ func (jsonStore *JsonFileStore) FormatData() {
 
     newNodeMap := make(map[string]Node)
     for k, v := range jsonStore.gaiaData.NodeMap {
-        newNodeMap[strings.TrimSpace(k)] = v.DoTrim()
+        (&v).Normalize(jsonStore.gaiaData.AliasMap)
+        newNodeMap[strings.TrimSpace(k)] = v
     }
     jsonStore.gaiaData.NodeMap = newNodeMap
 
@@ -321,8 +348,8 @@ func (jsonStore *JsonFileStore) load() error {
         jsonStore.gaiaData.AliasMap = make(map[string]string)
     }
 
-    if jsonStore.gaiaData.NamePrefixIdMap == nil {
-        jsonStore.gaiaData.NamePrefixIdMap = make(map[string]string)
+    if jsonStore.gaiaData.CategoryIdMap == nil {
+        jsonStore.gaiaData.CategoryIdMap = make(map[string]string)
     }
 
     if jsonStore.gaiaData.NameIdMap == nil {

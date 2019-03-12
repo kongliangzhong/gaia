@@ -3,6 +3,7 @@ package main
 type Store interface {
     Add(node Node) error
     AddAlias(from, to string) error
+    RemoveAlias(keyword string) error
     Update(node Node) error
     Append(id string, extraContent string) error
     Search(category string, keywords []string) []Node

@@ -16,15 +16,6 @@ type Node struct {
 
 var CodePrefixSpace string = "          " // len:10
 
-func (node Node) DoTrim() Node {
-    node.Id = strings.TrimSpace(node.Id)
-    node.Name = strings.TrimSpace(node.Name)
-    node.Category = strings.TrimSpace(node.Category)
-    node.Tags = strings.TrimSpace(node.Tags)
-    node.Desc = strings.TrimSpace(node.Desc)
-    return node
-}
-
 func (node Node) String() string {
     res := ""
     res += fmt.Sprintf("        Id: %s\n", node.Id)
@@ -50,10 +41,28 @@ func (node Node) PrintToScreen() {
     fmt.Println(node.String())
 }
 
-func (node *Node) Normalize() error {
-    node.Name = strings.ToLower(node.Name)
-    node.Category = strings.ToLower(node.Category)
-    node.Tags = strings.ToLower(node.Tags)
+func (node *Node) Normalize(aliasMap map[string]string) error {
+    normalizeStr := func(s string, sep string) string {
+        result := strings.ToLower(strings.TrimSpace(s))
+        if sep == "" {
+            return result
+        } else {
+            parts := strings.Split(result, sep)
+            resultParts := []string{}
+            for _, part := range parts {
+                if aliasMap[part] != "" {
+                    resultParts = append(resultParts, aliasMap[part])
+                }
+            }
+
+            return strings.Join(resultParts, sep)
+        }
+    }
+
+    node.Name = normalizeStr(node.Name, "-")
+    node.Category = normalizeStr(node.Category, "")
+    node.Tags = normalizeStr(node.Tags, ",")
+    node.Desc = strings.TrimSpace(node.Desc)
     return nil
 }
 
