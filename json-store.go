@@ -85,6 +85,7 @@ func (jsonStore *JsonFileStore) Add(node Node) error {
 
     fmt.Println("generate new node id:", id)
     node.Id = id
+    node.Category = strings.Split(node.Name, "-")[0]
     jsonStore.gaiaData.NameIdMap[node.Name] = id
     jsonStore.gaiaData.NodeMap[id] = node
 
@@ -116,6 +117,7 @@ func (jsonStore *JsonFileStore) Update(node Node) error {
         return errors.New("node's Name changed!")
     }
 
+    node.Category = strings.Split(node.Name, "-")[0]
     jsonStore.gaiaData.NodeMap[node.Id] = node
     return jsonStore.saveToFile()
 }
@@ -151,9 +153,7 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
             }
 
             for _, s := range arr {
-                if s == dest {
-                    return true
-                }
+                return strings.HasPrefix(s, dest)
             }
             return false
         }

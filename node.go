@@ -65,7 +65,7 @@ func (node Node) String() string {
     res := ""
     res += fmt.Sprintf("        ID: %s\n", node.Id)
     res += fmt.Sprintf("      NAME: %s\n", node.Name)
-    res += fmt.Sprintf("  CATEGORY: %s\n", node.Category)
+    // res += fmt.Sprintf("  CATEGORY: %s\n", node.Category)
     res += fmt.Sprintf("      TAGS: %s\n", node.Tags)
     res += fmt.Sprintf("EXECUTABLE: %t\n", node.Executable)
     res += fmt.Sprintf("  EXECFILE: %s\n", node.ExecFile)

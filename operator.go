@@ -65,15 +65,18 @@ func (op *Operator) Append(id string, extraContent string) {
 
 func (op *Operator) Search(category string, keywords []string) {
     if category == "" {
-        fmt.Println("Search node with keywords:", keywords)
+        fmt.Println("Search nodes with keywords:", keywords)
     } else {
-        fmt.Println("Search node with keywords:", keywords, "in category:", category)
+        fmt.Println("Search nodes with keywords:", keywords, "in category:", category)
     }
 
     keywordsReplaced := op.store.ReplaceAlias(keywords)
     matchedNode := op.store.Search(category, keywordsReplaced)
     size := len(matchedNode)
-    if size > 10 {
+    if size == 0 {
+        fmt.Println("None were found")
+        return
+    } else if size > 10 {
         fmt.Println("Found", size, "matched nodes, print first 10 as below:")
     } else {
         fmt.Println("Found", size, "matched nodes, print as below:")
