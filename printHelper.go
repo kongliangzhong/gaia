@@ -104,10 +104,15 @@ func (treeNode *TreeNode) removeDuplicatedChild() {
  │   └── a1
  └── b
 */
-func (treeNode *TreeNode) PrintToScreen() {
+func (treeNode *TreeNode) PrintToScreen(indent int) {
     treeLines := generateNodeLines(treeNode, "")
-    lines := strings.Join(treeLines, "\n")
-    fmt.Println(lines)
+    prefix := strings.Repeat(" ", indent)
+    var prefixedLines []string
+    for _, line := range treeLines {
+        prefixedLines = append(prefixedLines, prefix + line)
+    }
+    outputLines := strings.Join(prefixedLines, "\n")
+    fmt.Println(outputLines)
 }
 
 func generateNodeLines(tn *TreeNode, prefix string) []string {
