@@ -84,7 +84,7 @@ func (op *Operator) Search(category string, keywords []string) {
     for i, node := range matchedNode {
         if i < 10 {
             fmt.Println(resultDelimiter)
-            fmt.Println(node.ShortString())
+            fmt.Print(node.ShortString())
         } else {
             break
         }

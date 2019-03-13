@@ -146,6 +146,8 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
         }
     }
 
+    // TODO: in this function i implemented search AND,
+    // maybe a search OR function should be implemented.
     isKeywordsMatch := func(node Node) bool {
         arrayContains := func(arr []string, dest string) bool {
             if strings.TrimSpace(dest) == "" {
@@ -153,7 +155,9 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
             }
 
             for _, s := range arr {
-                return strings.HasPrefix(s, dest)
+                if strings.HasPrefix(s, dest) {
+                    return true
+                }
             }
             return false
         }
@@ -161,17 +165,14 @@ func (jsonStore *JsonFileStore) Search(category string, keywords []string) []Nod
         nameParts := strings.Split(node.Name, "-")
         tags := strings.Split(node.Tags, ",")
 
-        headAllowed := []string{nameParts[0]}
-        headAllowed = append(headAllowed, tags...)
-        tailAllowed := []string{}
-        tailAllowed = append(tailAllowed, nameParts[1:]...)
-        tailAllowed = append(tailAllowed, tags...)
+        nodeKeywords := nameParts
+        nodeKeywords = append(nodeKeywords, tags...)
 
-        res := arrayContains(headAllowed, keywords[0])
-        for _, k := range keywords[1:] {
-            res = res && arrayContains(tailAllowed, k)
+        isMatch := true
+        for _, k := range keywords {
+            isMatch = isMatch && arrayContains(nodeKeywords, k)
         }
-        return res
+        return isMatch
     }
 
     for _, node := range jsonStore.gaiaData.NodeMap {
