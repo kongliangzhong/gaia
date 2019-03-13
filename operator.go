@@ -253,9 +253,45 @@ func (op *Operator) Exec(file string) {
 }
 
 func (op *Operator) Get(id string, onlyContent bool) {
+    getAnchorContent := func(_content string, _anchor string) string {
+        _anchor = strings.TrimSpace(_anchor)
+
+        _contentLines := strings.Split(_content, "\n")
+        var anchorLines []string
+        isInAnchor := false
+        for _, line := range _contentLines {
+            lineTrimed := strings.TrimSpace(line)
+            if strings.HasPrefix(lineTrimed, _anchor + " ") {
+                isInAnchor = true
+            } else if strings.HasPrefix(lineTrimed, "#") {
+                if isInAnchor {
+                    isInAnchor = false
+                }
+            } else {
+                if isInAnchor {
+                    anchorLines = append(anchorLines, line)
+                }
+            }
+        }
+        return strings.Join(anchorLines, "\n")
+    }
+
+    anchor := ""
+    anchorIndex := strings.Index(id, "#")
+    if anchorIndex > 0 {
+        anchor = id[anchorIndex:]
+        id = id[0 :  anchorIndex]
+    }
+
     node, err := op.store.GetById(id)
     if err != nil {
         op.err = err
+        return
+    }
+
+    if anchor != "" {
+        anchorContent := getAnchorContent(node.Content, anchor)
+        fmt.Println(anchorContent)
     } else {
         if onlyContent {
             fmt.Println(node.Content)
