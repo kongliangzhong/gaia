@@ -197,10 +197,10 @@ func (op *Operator) Edit(id string) {
 
     err = cmd.Wait()
 
-    if err != nil {
-        op.err = err
-        return
-    }
+    // if err != nil {
+    //     op.err = err
+    //     return
+    // }
 
     //fmt.Println("tmpFile: ", tmpFile.Name())
     err = (&node).ReadFromFile(tmpFile.Name())

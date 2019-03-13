@@ -110,6 +110,7 @@ func (node *Node) Normalize(aliasMap map[string]string) error {
     node.Category = normalizeStr(node.Category, "")
     node.Tags = normalizeStr(node.Tags, ",")
     node.Desc = strings.TrimSpace(node.Desc)
+    node.Content = strings.TrimSpace(node.Content)
     return nil
 }
 
