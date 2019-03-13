@@ -130,11 +130,6 @@ func (op *Operator) Merge(ids []string) {
         desc = desc + "\n" + node.Desc
         content = content + "\n" + node.Content
 
-        if node.Category != cate {
-            op.err = errors.New("categorys are not equal, can not merge.")
-            return
-        }
-
         tags := strings.Split(node.Tags, ",")
         for _, t := range tags {
             if !arrContains(allTags, t) {
@@ -263,7 +258,7 @@ func (op *Operator) Get(id string, onlyContent bool) {
             fmt.Println(node.Content)
         } else {
             fmt.Println(resultDelimiter)
-            fmt.Print(node)
+            fmt.Print(node.StringWithoutEmpty())
             fmt.Println(resultDelimiter)
         }
     }

@@ -17,6 +17,7 @@ import (
 
 // CARD NOTE
 // card note chain:  exchange card.
+// Link between note.
 
 var gaiaDir = ".gaia/"
 const dataFileName = "data/data.json"
@@ -259,6 +260,15 @@ func processSubCommand(command string) {
     case "search":
         op.Search(category, subFlag.Args())
     case "remove":
+        if id == "" && len(subFlag.Args()) > 0 {
+            id = subFlag.Args()[0]
+        }
+
+        if strings.TrimSpace(id) == "" {
+            subFlag.Usage()
+            os.Exit(2)
+        }
+
         fmt.Println("Are you sure to remove node with id "+ id +"?", "  yes|no")
         var response string
         _, err := fmt.Scanln(&response)
