@@ -76,6 +76,7 @@ var (
     onlyContent bool
     isFormat bool
     isRemove bool
+    isReorg bool
 )
 
 func init() {
@@ -164,6 +165,7 @@ func main() {
         subFlag.BoolVar(&countStats, "n", false, "count stats")
     case "admin":
         subFlag.BoolVar(&isFormat, "f", false, "format all data")
+        subFlag.BoolVar(&isReorg, "ro", false, "reorg all data")
     default:
         fmt.Println("Unrecogniz command:", os.Args[1])
         printUsage()
@@ -295,6 +297,9 @@ func processSubCommand(command string) {
     case "admin":
         if isFormat {
             op.FormatData()
+        }
+        if isReorg {
+            op.ReorgAllData()
         }
     default:
         fmt.Println("Error: wrong path")

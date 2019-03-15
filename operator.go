@@ -209,7 +209,9 @@ func (op *Operator) Edit(id string) {
         return
     }
 
-    if oldName == node.Name {
+    oldCategory := strings.Split(oldName, "-")[0]
+    newCategory := strings.Split(node.Name, "-")[0]
+    if oldCategory == newCategory {
         op.Update(node)
     } else {
         op.Add(node)
@@ -314,4 +316,8 @@ func (op *Operator) Stats() {
 
 func (op *Operator) FormatData() {
     op.store.FormatData()
+}
+
+func (op *Operator) ReorgAllData() {
+    op.store.ReorgAllData()
 }

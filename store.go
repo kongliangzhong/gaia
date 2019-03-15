@@ -14,7 +14,8 @@ type Store interface {
     ListCategories() map[string][]string
     ListNodes(names []string) []Node
     ReplaceAlias(strArr []string) []string
-    FormatData()
+    ReorgAllData() error
+    FormatData() error
 }
 
 type Stats struct {

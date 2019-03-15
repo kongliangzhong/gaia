@@ -12,6 +12,7 @@ import (
 type GaiaData struct {
     AliasMap map[string]string
     CategoryIdMap map[string]string
+    BranchIdMap map[string]string
     NameIdMap map[string]string // name -> id
     NodeMap map[string]Node  // id -> node map
 }
@@ -29,56 +30,15 @@ func newJsonFileStore(dataFilePath string) *JsonFileStore {
 }
 
 func (jsonStore *JsonFileStore) Add(node Node) error {
-    generateId := func() (string, error) {
-        parts := strings.Split(node.Name, "-")
-        idPrefix, ok := jsonStore.gaiaData.CategoryIdMap[parts[0]]
-        if !ok {
-            prefixUsageMap := make(map[string]bool)
-            for _, v := range jsonStore.gaiaData.CategoryIdMap {
-                prefixUsageMap[v] = true
-            }
-
-            if len(prefixUsageMap) == 256 {
-                return "", errors.New("node name head is greater than 255")
-            }
-
-            for i := 0; i < 256; i++ {
-                idPrefix = fmt.Sprintf("%02x", i)
-                if !prefixUsageMap[idPrefix] {
-                    jsonStore.gaiaData.CategoryIdMap[parts[0]] = idPrefix
-                    break
-                }
-            }
-        }
-
-        idTail := ""
-        for j := 0; j < 4095; j++ {
-            idTail = fmt.Sprintf("%x", j)
-            tmpId := idPrefix + idTail
-            _, exist := jsonStore.gaiaData.NodeMap[tmpId]
-            if !exist {
-                break
-            }
-        }
-        id := idPrefix + idTail
-
-        if _, exist := jsonStore.gaiaData.NodeMap[id]; exist {
-            return "", errors.New("No more space for name prefix:" + parts[0])
-        }
-
-        return id, nil
-    }
-
     (&node).Normalize(jsonStore.gaiaData.AliasMap)
+    if node.Name == "" {
+        return errors.New("node name is empty")
+    }
     if jsonStore.gaiaData.NameIdMap[node.Name] != "" {
         return errors.New("node name exist:" + node.Name)
     }
 
-    if node.Name == "" {
-        return errors.New("node name is empty")
-    }
-
-    id, err := generateId()
+    id, err := jsonStore.generateId(node.Name)
     if err != nil{
         return err
     }
@@ -113,11 +73,13 @@ func (jsonStore *JsonFileStore) Update(node Node) error {
         return errors.New("node with id" + node.Id + " is not exist")
     }
 
-    if old.Name != node.Name {
-        return errors.New("node's Name changed!")
+    oldBranch := old.GetBranch()
+    newBranch := node.GetBranch()
+
+    if oldBranch != newBranch {
+        return errors.New("can not do update, node's branch changed!")
     }
 
-    node.Category = strings.Split(node.Name, "-")[0]
     jsonStore.gaiaData.NodeMap[node.Id] = node
     return jsonStore.saveToFile()
 }
@@ -300,7 +262,7 @@ func (jsonStore *JsonFileStore) ReplaceAlias(strArr []string) []string {
     return replacedArr
 }
 
-func (jsonStore *JsonFileStore) FormatData() {
+func (jsonStore *JsonFileStore) FormatData() error {
     newAliasMap := make(map[string]string)
     for k, v := range jsonStore.gaiaData.AliasMap {
         newAliasMap[strings.TrimSpace(k)] = strings.TrimSpace(v)
@@ -326,7 +288,37 @@ func (jsonStore *JsonFileStore) FormatData() {
     }
     jsonStore.gaiaData.NodeMap = newNodeMap
 
-    jsonStore.saveToFile()
+    return jsonStore.saveToFile()
+}
+
+func (jsonStore *JsonFileStore) ReorgAllData() error {
+    jsonStore.gaiaData.CategoryIdMap = map[string]string{
+        "self": "0",
+        "math": "1",
+        "algorithm": "2",
+        "utils": "3",
+        "os": "4",
+        "tools": "5",
+        "lang": "6",
+        "others": "7",
+        "archive": "a",
+        "cache": "c",
+        "db": "d",
+        "eth": "e",
+        "frontend": "f",
+    }
+    jsonStore.gaiaData.BranchIdMap = map[string]string{}
+    jsonStore.gaiaData.NameIdMap = map[string]string{}
+
+    for _, node := range jsonStore.gaiaData.NodeMap {
+        node.Id = ""
+        err := jsonStore.Add(node)
+        if err != nil {
+            return err
+        }
+    }
+
+    return jsonStore.saveToFile()
 }
 
 func (jsonStore *JsonFileStore) load() error {
@@ -374,6 +366,76 @@ func (jsonStore *JsonFileStore) saveToFile() error {
     }
 
     return ioutil.WriteFile(jsonStore.FilePath, bs, 0660)
+}
+
+func (jsonStore *JsonFileStore) generateId(nodeName string) (string, error) {
+    parts := strings.Split(nodeName, "-")
+    idPrefix, ok := jsonStore.gaiaData.CategoryIdMap[parts[0]]
+    if !ok {
+        prefixUsageMap := make(map[string]bool)
+        for _, v := range jsonStore.gaiaData.CategoryIdMap {
+            prefixUsageMap[v] = true
+        }
+
+        if len(prefixUsageMap) >= 16 {
+            return "", errors.New("out of category space, max allowed: 16")
+        }
+
+        for i := 0; i < 16; i++ {
+            idPrefix = fmt.Sprintf("%x", i)
+            if !prefixUsageMap[idPrefix] {
+                jsonStore.gaiaData.CategoryIdMap[parts[0]] = idPrefix
+                break
+            }
+        }
+    }
+
+    if len(parts) == 1 {
+        return idPrefix, nil
+    }
+
+    branch := parts[0] + "-" + parts[1]
+    branchIdPrefix, exist := jsonStore.gaiaData.BranchIdMap[branch]
+    if !exist {
+        branchPrefixUsageMap := make(map[string]bool)
+        for _, v := range jsonStore.gaiaData.BranchIdMap {
+            branchPrefixUsageMap[v] = true
+        }
+
+        for i := 0; i < 16; i++ {
+            branchIdPrefix = idPrefix + fmt.Sprintf("%x", i)
+            if !branchPrefixUsageMap[branchIdPrefix] {
+                jsonStore.gaiaData.BranchIdMap[branch] = branchIdPrefix
+                break
+            }
+            branchIdPrefix = ""
+        }
+
+        if branchIdPrefix == "" {
+            return "", errors.New("out of branch space in category, max allowed: 16")
+        }
+    }
+
+    if len(parts) == 2 {
+        return branchIdPrefix, nil
+    }
+
+    idTail := ""
+    for j := 0; j < 256; j++ {
+        idTail = fmt.Sprintf("%02x", j)
+        tmpId := branchIdPrefix + idTail
+        _, exist := jsonStore.gaiaData.NodeMap[tmpId]
+        if !exist {
+            break
+        }
+        idTail = ""
+    }
+    if idTail == "" {
+        return "", errors.New("No more space in branch: " + branch + "; max allowed: 256")
+    }
+
+    id := branchIdPrefix + idTail
+    return id, nil
 }
 
 func existInArray(arr []string, s string) bool {

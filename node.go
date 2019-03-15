@@ -22,6 +22,15 @@ type Node struct {
 
 var CodePrefixSpace string = "    " // indent: 4
 
+func (node Node) GetBranch() string {
+    parts := strings.Split(node.Name, "-")
+    if len(parts) <= 2 {
+        return node.Name
+    } else {
+        return parts[0] + "-" + parts[1]
+    }
+}
+
 func (node Node) ShortString() string {
     res := ""
     res += fmt.Sprintf("        ID: %s\n", node.Id)
