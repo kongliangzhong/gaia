@@ -179,16 +179,9 @@ func (jsonStore *JsonFileStore) GetById(id string) (Node, error) {
 func (jsonStore *JsonFileStore) GetStats() Stats {
     categories := []string{}
     tags := []string{}
-    name0Arr := []string{}
-
     for _, node := range jsonStore.gaiaData.NodeMap {
         if !existInArray(categories, node.Category) {
             categories = append(categories, node.Category)
-        }
-
-        name0 := strings.Split(node.Name, "-")[0]
-        if !existInArray(name0Arr, name0) {
-            name0Arr = append(name0Arr, name0)
         }
 
         if node.Tags != "" {
@@ -205,7 +198,6 @@ func (jsonStore *JsonFileStore) GetStats() Stats {
         CategorySize: len(categories),
         NodeSize: len(jsonStore.gaiaData.NodeMap),
         TagSize: len(tags),
-        Name0Size: len(name0Arr),
     }
 }
 
@@ -310,11 +302,16 @@ func (jsonStore *JsonFileStore) ReorgAllData() error {
     jsonStore.gaiaData.BranchIdMap = map[string]string{}
     jsonStore.gaiaData.NameIdMap = map[string]string{}
 
-    for _, node := range jsonStore.gaiaData.NodeMap {
+    oldNodeMap := jsonStore.gaiaData.NodeMap
+    jsonStore.gaiaData.NodeMap = map[string]Node{}
+
+    for _, node := range oldNodeMap {
         node.Id = ""
         err := jsonStore.Add(node)
         if err != nil {
-            return err
+            fmt.Println("err:", err)
+            // return err
+            continue
         }
     }
 

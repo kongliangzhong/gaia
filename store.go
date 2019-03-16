@@ -22,5 +22,4 @@ type Stats struct {
     CategorySize int
     NodeSize     int
     TagSize      int
-    Name0Size    int
 }

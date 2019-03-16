@@ -311,7 +311,6 @@ func (op *Operator) Stats() {
     fmt.Printf("    CategorySize: %d\n", stats.CategorySize)
     fmt.Printf("    NodeSize:     %d\n", stats.NodeSize)
     fmt.Printf("    TagSize:      %d\n", stats.TagSize)
-    fmt.Printf("    Name0Size:    %d\n", stats.Name0Size)
 }
 
 func (op *Operator) FormatData() {
